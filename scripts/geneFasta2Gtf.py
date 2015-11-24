@@ -1,5 +1,11 @@
 #!/bin/python
 
+'''
+DEPRECATED!
+Used to generate gene model (GTF/GFF file) from gene contstruct parts FASTA
+for read quantification with htseq-count or featureCounts.
+'''
+
 import sys
 from Bio import SeqIO
 
@@ -16,14 +22,14 @@ def build_fasta_list(fastaRecords, gene, fastaList=[]):
     for idx,record in enumerate(fastaRecords):
         recordStart = totalLength + 6
         recordStop = totalLength + len(record) + 5
-        fastaList.append(('\t').join(['0', 'NA', 'exon', 
+        fastaList.append(('\t').join(['0', 'NA', 'exon',
                                       str(recordStart), str(recordStop),
                                       '.', '+', '.',
                                       ('gene_id "%s"; '
                                        'transcript_id "%s"; '
                                        'exon_number "%s"; '
-                                       'exon_name "%s";\n') % 
-                                       (gene, gene + '-1', idx + 1, record.name)])) 
+                                       'exon_name "%s";\n') %
+                                       (gene, gene + '-1', idx + 1, record.name)]))
         totalLength += len(record) + 10
     fastaList.append(('\t').join(['0', 'NA', 'transcript',
                                       str(1), str(totalLength),
@@ -44,7 +50,7 @@ def main(argv):
 
     fastaRecords = read_fasta(fastaFile)
     fastaList = build_fasta_list(fastaRecords, gene)
-    
+
     write_gtf(fastaList, gtfOutFile)
 
 

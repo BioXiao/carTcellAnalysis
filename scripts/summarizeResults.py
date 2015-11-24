@@ -1,4 +1,10 @@
 #!/bin/python
+
+'''
+DEPRECATED!
+Used to parse and format results from TopHat and featureCounts.
+'''
+
 import sys, re, csv
 
 def build_junction_dict(gtfFile, juncDict={}):
