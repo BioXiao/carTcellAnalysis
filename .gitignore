@@ -1,2 +1,5 @@
 # Ignore data
 data
+
+# Ignore tools (dependencies)
+tools

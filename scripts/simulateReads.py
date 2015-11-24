@@ -89,11 +89,23 @@ def main(argv):
     fastaFile = sys.argv[1]
     fastqOutFile = sys.argv[2]
     numReads = int(sys.argv[3])
+    mode = int(sys.argv[4])
+
+    if mode == 3:
+        numReads = numReads / 2
 
     fastaRecords = read_fasta(fastaFile)
-    fastqRecords = generate_intra_feature_reads(fastaRecords, numReads)
-    fastqRecords = fastqRecords + generate_cross_feature_reads(fastaRecords,
-                                                               numReads)
+
+    if mode == 1 or mode == 3:
+        fastqRecords = generate_intra_feature_reads(fastaRecords, numReads)
+
+    if mode == 2:
+        fastqRecords = generate_cross_feature_reads(fastaRecords, numReads)
+
+    if mode == 3:
+        fastqRecords = fastqRecords \
+        + generate_cross_feature_reads(fastaRecords, numReads)
+
     write_fastq(fastqRecords, fastqOutFile)
 
 if __name__ == "__main__":
