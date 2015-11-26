@@ -199,9 +199,40 @@ $SALMON_EXEC quant \
 total4_2=$(grep -v "#" ${XCRIPTOME_OUT_DIR_2}/quant.sf \
     | awk '{ sum+=$4} END {print sum}')
 
-# Report test results
 
-cat << EOM
+# Test 5
+
+GENE_XCRIPTOME_OUT_DIR_1="${OUT_DIR}/geneTranscriptomeTest1"
+
+$SALMON_EXEC quant \
+    -i $GENE_XCRIPTOME_INDEX \
+    -l U \
+    -r $SIM_FASTQ_ALL \
+    -o $GENE_XCRIPTOME_OUT_DIR_1
+
+# Count total mapped reads
+total5_1=$(grep -v "#" ${GENE_XCRIPTOME_OUT_DIR_1}/quant.sf \
+    | awk '{ if($1==0) print $4 }')
+
+
+GENE_XCRIPTOME_OUT_DIR_2="${OUT_DIR}/geneTranscriptomeTest2"
+
+$SALMON_EXEC quant \
+    -i $GENE_XCRIPTOME_INDEX \
+    -l U \
+    -r $SIM_FASTQ_NO_MULTI \
+    -o $GENE_XCRIPTOME_OUT_DIR_2
+
+# Count total mapped reads
+total5_2=$(grep -v "#" ${GENE_XCRIPTOME_OUT_DIR_2}/quant.sf \
+    | awk '{ if($1==0) print $4 }')
+
+
+### REPORT TEST RESULTS
+
+SUMMARY_FILE="data/results/testSummary.txt"
+
+cat > $SUMMARY_FILE << EOM
 
 ################################################################
 TEST RESULTS
@@ -214,11 +245,11 @@ not most) of the inter-part reads will still map.
 
 EOM
 
-printf "%s intra-part reads mapped\n" $total1_1
-printf "%s inter-part reads mapped\n" $total1_2
+printf "%s intra-part reads mapped\n" $total1_1 >> $SUMMARY_FILE
+printf "%s inter-part reads mapped\n" $total1_2 >> $SUMMARY_FILE
 
 
-cat << EOM
+cat >> $SUMMARY_FILE << EOM
 
 >>> Test 2:
 All reads, whether intra-part or inter-part, should map to the full gene
@@ -226,9 +257,9 @@ construct sequence (treated as a transcript by Salmon).
 
 EOM
 
-printf "%s combined reads mapped\n" $total2
+printf "%s combined reads mapped\n" $total2 >> $SUMMARY_FILE
 
-cat << EOM
+cat >> $SUMMARY_FILE << EOM
 
 >>> Test 3:
 When both the full gene and individual parts are included in the transcript
@@ -245,11 +276,14 @@ expression of individual parts.
 
 EOM
 
-printf "%s intra-part reads mapped to full gene/transcript\n" $total3_1
-printf "%s inter-part reads mapped to full gene/transcript\n" $total3_2
-printf "%s combined reads mapped to full gene/transcript\n" $total3_3
+printf "%s intra-part reads mapped to full gene/transcript\n" $total3_1 \
+    >> $SUMMARY_FILE
+printf "%s inter-part reads mapped to full gene/transcript\n" $total3_2 \
+    >> $SUMMARY_FILE
+printf "%s combined reads mapped to full gene/transcript\n" $total3_3 \
+    >> $SUMMARY_FILE
 
-cat << EOM
+cat >> $SUMMARY_FILE << EOM
 
 >>> Test 4:
 Only some reads (a subset of those mapping to individual parts) should map to
@@ -258,5 +292,24 @@ should map.
 
 EOM
 
-printf "%s combined reads mapped\n" $total4_1
-printf "%s inter-part reads mapped\n" $total4_2
+printf "%s combined reads mapped\n" $total4_1 >> $SUMMARY_FILE
+printf "%s inter-part reads mapped\n" $total4_2 >> $SUMMARY_FILE
+
+cat >> $SUMMARY_FILE << EOM
+
+>>> Test 5:
+When the gene construct transcript is included with the full reference
+transcriptome, the quantification model used by salmon should be able to
+assign part-spanning reads to that transcript, as well as at least some of the
+intra-part reads (based on likelihood). If input reads are only those mapping
+to individual parts, there should be less (but not zero) evidence for the
+transcript of interest.
+
+EOM
+
+printf "%s combined reads mapped to full gene/transcript\n" $total5_1 \
+    >> $SUMMARY_FILE
+printf "%s intra-part reads mapped to full gene/transcript\n" $total5_2 \
+    >> $SUMMARY_FILE
+
+cat $SUMMARY_FILE
