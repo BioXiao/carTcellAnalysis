@@ -1,0 +1,21 @@
+[2015-11-27 20:06:44.295] [jointLog] [info] parsing read library format
+[2015-11-27 20:06:44.342] [jointLog] [info] Loading Quasi index
+[2015-11-27 20:06:44.343] [jointLog] [info] done
+[2015-11-27 20:07:17.356] [jointLog] [info] Computed 0 rich equivalence classes for further processing
+[2015-11-27 20:07:17.356] [jointLog] [info] Counted 0 total reads in the equivalence classes 
+[2015-11-27 20:07:17.357] [jointLog] [info] Mapping rate = 0%
+
+[2015-11-27 20:07:17.357] [jointLog] [info] finished quantifyLibrary()
+[2015-11-27 20:07:17.357] [jointLog] [info] Starting optimizer
+[2015-11-27 20:07:17.358] [jointLog] [info] Marked 0 weighted equivalence classes as degenerate
+[2015-11-27 20:07:17.358] [jointLog] [info] iteration = 0 | max rel diff. = -1.79769e+308
+[2015-11-27 20:07:17.358] [jointLog] [info] iteration = 1 | max rel diff. = -1.79769e+308
+[2015-11-27 20:07:17.358] [jointLog] [error] Total alpha weight was too small! Make sure you ran salmon correclty.
+[2015-11-27 20:07:17.358] [jointLog] [info] Finished optimizer
+[2015-11-27 20:07:17.358] [jointLog] [info] writing output 
+
+[2015-11-27 20:07:17.356] [fileLog] [info] 
+At end of round 0
+==================
+Observed 4792430 total fragments (4792430 in most recent round)
+

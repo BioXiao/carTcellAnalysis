@@ -1,0 +1,10 @@
+# salmon (mapping-based) v0.5.0
+# [ program ] => salmon 
+# [ command ] => quant 
+# [ index ] => { ../data/indexes/salmon/carTranscript }
+# [ libType ] => { U }
+# [ unmatedReads ] => { ../data/P89/P89-5/lib8583_C6REVANXX_trimmed.fastq }
+# [ output ] => { tmp_lib8583 }
+# [ mapping rate ] => { 0.0143042% }
+# Name	Length	TPM	NumReads
+0	2515	1e+06	277

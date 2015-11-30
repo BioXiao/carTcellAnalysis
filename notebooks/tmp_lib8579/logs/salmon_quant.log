@@ -1,0 +1,24 @@
+[2015-11-27 20:06:36.495] [jointLog] [info] parsing read library format
+[2015-11-27 20:06:36.542] [jointLog] [info] Loading Quasi index
+[2015-11-27 20:06:36.543] [jointLog] [info] done
+[2015-11-27 20:06:43.748] [jointLog] [info] Computed 1 rich equivalence classes for further processing
+[2015-11-27 20:06:43.748] [jointLog] [info] Counted 9 total reads in the equivalence classes 
+[2015-11-27 20:06:43.750] [jointLog] [info] Mapping rate = 0.000829948%
+
+[2015-11-27 20:06:43.750] [jointLog] [info] finished quantifyLibrary()
+[2015-11-27 20:06:43.750] [jointLog] [info] Starting optimizer
+[2015-11-27 20:06:43.751] [jointLog] [info] Marked 0 weighted equivalence classes as degenerate
+[2015-11-27 20:06:43.751] [jointLog] [info] iteration = 0 | max rel diff. = 5.92119e-16
+[2015-11-27 20:06:43.751] [jointLog] [info] iteration = 1 | max rel diff. = 5.92119e-16
+[2015-11-27 20:06:43.751] [jointLog] [info] Finished optimizer
+[2015-11-27 20:06:43.751] [jointLog] [info] writing output 
+
+[2015-11-27 20:06:43.751] [jointLog] [warning] NOTE: Read Lib [../data/P89/P89-5/150910/lib8579_C6REVANXX_trimmed.fastq] :
+
+Detected a strand bias > 1% in an unstranded protocol check the file: tmp_lib8579/libFormatCounts.txt for details
+
+[2015-11-27 20:06:43.748] [fileLog] [info] 
+At end of round 0
+==================
+Observed 1084405 total fragments (1084405 in most recent round)
+
