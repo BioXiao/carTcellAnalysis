@@ -19,3 +19,66 @@ Observed 3194822 total fragments (3194822 in most recent round)
 [2015-11-27 20:04:40.825] [jointLog] [info] Finished optimizer
 [2015-11-27 20:04:40.825] [jointLog] [info] writing output 
 
+[2015-11-30 16:09:40.345] [jointLog] [info] parsing read library format
+[2015-11-30 16:09:40.396] [jointLog] [info] Loading Quasi index
+[2015-11-30 16:09:40.398] [jointLog] [info] done
+[2015-11-30 16:09:52.804] [fileLog] [info] 
+At end of round 0
+==================
+Observed 3194822 total fragments (3194822 in most recent round)
+
+[2015-11-30 16:09:52.804] [jointLog] [info] Computed 0 rich equivalence classes for further processing
+[2015-11-30 16:09:52.804] [jointLog] [info] Counted 0 total reads in the equivalence classes 
+[2015-11-30 16:09:52.808] [jointLog] [info] Mapping rate = 0%
+
+[2015-11-30 16:09:52.808] [jointLog] [info] finished quantifyLibrary()
+[2015-11-30 16:09:52.808] [jointLog] [info] Starting optimizer
+[2015-11-30 16:09:52.808] [jointLog] [info] Marked 0 weighted equivalence classes as degenerate
+[2015-11-30 16:09:52.808] [jointLog] [info] iteration = 0 | max rel diff. = -1.79769e+308
+[2015-11-30 16:09:52.808] [jointLog] [info] iteration = 1 | max rel diff. = -1.79769e+308
+[2015-11-30 16:09:52.808] [jointLog] [error] Total alpha weight was too small! Make sure you ran salmon correclty.
+[2015-11-30 16:09:52.808] [jointLog] [info] Finished optimizer
+[2015-11-30 16:09:52.808] [jointLog] [info] writing output 
+
+[2015-11-30 16:19:06.505] [jointLog] [info] parsing read library format
+[2015-11-30 16:19:06.557] [jointLog] [info] Loading Quasi index
+[2015-11-30 16:19:06.558] [jointLog] [info] done
+[2015-11-30 16:19:19.145] [jointLog] [info] Computed 0 rich equivalence classes for further processing
+[2015-11-30 16:19:19.145] [jointLog] [info] Counted 0 total reads in the equivalence classes 
+[2015-11-30 16:19:19.148] [jointLog] [info] Mapping rate = 0%
+
+[2015-11-30 16:19:19.148] [jointLog] [info] finished quantifyLibrary()
+[2015-11-30 16:19:19.148] [jointLog] [info] Starting optimizer
+[2015-11-30 16:19:19.148] [jointLog] [info] Marked 0 weighted equivalence classes as degenerate
+[2015-11-30 16:19:19.148] [jointLog] [info] iteration = 0 | max rel diff. = -1.79769e+308
+[2015-11-30 16:19:19.148] [jointLog] [info] iteration = 1 | max rel diff. = -1.79769e+308
+[2015-11-30 16:19:19.148] [jointLog] [error] Total alpha weight was too small! Make sure you ran salmon correclty.
+[2015-11-30 16:19:19.148] [jointLog] [info] Finished optimizer
+[2015-11-30 16:19:19.148] [jointLog] [info] writing output 
+
+[2015-11-30 16:19:19.146] [fileLog] [info] 
+At end of round 0
+==================
+Observed 3194822 total fragments (3194822 in most recent round)
+
+[2015-11-30 16:26:22.097] [jointLog] [info] parsing read library format
+[2015-11-30 16:26:22.146] [jointLog] [info] Loading Quasi index
+[2015-11-30 16:26:22.147] [jointLog] [info] done
+[2015-11-30 16:26:34.842] [fileLog] [info] 
+At end of round 0
+==================
+Observed 3194822 total fragments (3194822 in most recent round)
+
+[2015-11-30 16:26:34.841] [jointLog] [info] Computed 0 rich equivalence classes for further processing
+[2015-11-30 16:26:34.841] [jointLog] [info] Counted 0 total reads in the equivalence classes 
+[2015-11-30 16:26:34.844] [jointLog] [info] Mapping rate = 0%
+
+[2015-11-30 16:26:34.844] [jointLog] [info] finished quantifyLibrary()
+[2015-11-30 16:26:34.844] [jointLog] [info] Starting optimizer
+[2015-11-30 16:26:34.845] [jointLog] [info] Marked 0 weighted equivalence classes as degenerate
+[2015-11-30 16:26:34.845] [jointLog] [info] iteration = 0 | max rel diff. = -1.79769e+308
+[2015-11-30 16:26:34.845] [jointLog] [info] iteration = 1 | max rel diff. = -1.79769e+308
+[2015-11-30 16:26:34.845] [jointLog] [error] Total alpha weight was too small! Make sure you ran salmon correclty.
+[2015-11-30 16:26:34.845] [jointLog] [info] Finished optimizer
+[2015-11-30 16:26:34.845] [jointLog] [info] writing output 
+

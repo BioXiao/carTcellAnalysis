@@ -81,6 +81,8 @@ SIM_DATA_DIR="data/simFastqs"
 SIM_FASTQ_ALL="${SIM_DATA_DIR}/simCarParts.fastq"
 SIM_FASTQ_NO_MULTI="${SIM_DATA_DIR}/simCarParts_noMulti.fastq"
 SIM_FASTQ_MULTI_ONLY="${SIM_DATA_DIR}/simCarParts_multiOnly.fastq"
+SIM_FASTQ_NO_MULTI_ENDO="${SIM_DATA_DIR}/simCarParts_noMulti_endo.fastq"
+
 
 OUT_DIR="data/results"
 if [ ! -e "$OUT_DIR" ]; then
@@ -228,6 +230,61 @@ total5_2=$(grep -v "#" ${GENE_XCRIPTOME_OUT_DIR_2}/quant.sf \
     | awk '{ if($1==0) print $4 }')
 
 
+# Test 6
+
+GENE_XCRIPTOME_ENDO_OUT_DIR_1="${OUT_DIR}/geneTranscriptomeEndoTest1"
+
+$SALMON_EXEC quant \
+    -i $GENE_XCRIPTOME_INDEX \
+    -l U \
+    -r $SIM_FASTQ_NO_MULTI_ENDO \
+    -o $GENE_XCRIPTOME_ENDO_OUT_DIR_1
+
+# Count total mapped reads
+total6_1=$(grep -v "#" ${GENE_XCRIPTOME_ENDO_OUT_DIR_1}/quant.sf \
+    | awk '{ if($1==0) print $4 }')
+
+
+GENE_XCRIPTOME_ENDO_OUT_DIR_2="${OUT_DIR}/geneTranscriptomeEndoTest2"
+
+$SALMON_EXEC quant \
+    -i $GENE_XCRIPTOME_INDEX \
+    -l U \
+    -r $SIM_FASTQ_NO_MULTI \
+    -o $GENE_XCRIPTOME_ENDO_OUT_DIR_2
+
+# Count total mapped reads
+total6_2=$(grep -v "#" ${GENE_XCRIPTOME_ENDO_OUT_DIR_2}/quant.sf \
+    | awk '{ if($1==0) print $4 }')
+
+
+# Test 7
+
+XCRIPTOME_ENDO_OUT_DIR_1="${OUT_DIR}/transcriptomeEndoTest1"
+
+$SALMON_EXEC quant \
+    -i $XCRIPTOME_INDEX \
+    -l U \
+    -r $SIM_FASTQ_NO_MULTI \
+    -o $XCRIPTOME_ENDO_OUT_DIR_1
+
+# Count total mapped reads
+total7_1=$(grep -v "#" ${XCRIPTOME_ENDO_OUT_DIR_1}/quant.sf \
+    | awk '{ sum+=$4} END {print sum}')
+
+
+XCRIPTOME_ENDO_OUT_DIR_2="${OUT_DIR}/transcriptomeEndoTest2"
+
+$SALMON_EXEC quant \
+    -i $XCRIPTOME_INDEX \
+    -l U \
+    -r $SIM_FASTQ_NO_MULTI_ENDO \
+    -o $XCRIPTOME_ENDO_OUT_DIR_2
+
+# Count total mapped reads
+total7_2=$(grep -v "#" ${XCRIPTOME_ENDO_OUT_DIR_2}/quant.sf \
+    | awk '{ sum+=$4} END {print sum}')
+
 ### REPORT TEST RESULTS
 
 SUMMARY_FILE="data/results/testSummary.txt"
@@ -310,6 +367,42 @@ EOM
 printf "%s combined reads mapped to full gene/transcript\n" $total5_1 \
     >> $SUMMARY_FILE
 printf "%s intra-part reads mapped to full gene/transcript\n" $total5_2 \
+    >> $SUMMARY_FILE
+
+cat $SUMMARY_FILE
+
+
+cat >> $SUMMARY_FILE << EOM
+
+>>> Test 6:
+When the gene construct transcript is included with the full reference
+transcriptome, the quantification model used by salmon should be able to
+assign part-spanning reads to that transcript, as well as at least some of the
+intra-part reads (based on likelihood). If input reads are only those mapping
+to individual parts, there should be less (but not zero) evidence for the
+transcript of interest. This should be even more pronounced if all of the
+intra-part reads are from endogenous features.
+
+EOM
+
+printf "%s combined reads mapped to full gene/transcript\n" $total6_1 \
+    >> $SUMMARY_FILE
+printf "%s intra-part reads mapped to full gene/transcript\n" $total6_2 \
+    >> $SUMMARY_FILE
+
+
+cat >> $SUMMARY_FILE << EOM
+
+>>> Test 7:
+When only intra-part reads are mapped to the human transcriptome (which does
+not include the gene construct), those reads generated from endogenous features
+should map at a higher rate than those from all features of the gene construct.
+
+EOM
+
+printf "%s intra-part reads mapped\n" $total7_1 \
+    >> $SUMMARY_FILE
+printf "%s endogenous intra-part reads mapped\n" $total7_2 \
     >> $SUMMARY_FILE
 
 cat $SUMMARY_FILE

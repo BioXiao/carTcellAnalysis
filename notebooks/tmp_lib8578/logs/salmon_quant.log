@@ -22,3 +22,71 @@ Observed 3004892 total fragments (3004892 in most recent round)
 
 Detected a strand bias > 1% in an unstranded protocol check the file: tmp_lib8578/libFormatCounts.txt for details
 
+[2015-11-30 16:20:08.609] [jointLog] [info] parsing read library format
+[2015-11-30 16:20:08.666] [jointLog] [info] Loading Quasi index
+[2015-11-30 16:20:08.667] [jointLog] [info] done
+[2015-11-30 16:20:20.544] [jointLog] [info] Computed 1 rich equivalence classes for further processing
+[2015-11-30 16:20:20.544] [jointLog] [info] Counted 61 total reads in the equivalence classes 
+[2015-11-30 16:20:20.548] [jointLog] [info] Mapping rate = 0.00203002%
+
+[2015-11-30 16:20:20.548] [jointLog] [info] finished quantifyLibrary()
+[2015-11-30 16:20:20.548] [jointLog] [info] Starting optimizer
+[2015-11-30 16:20:20.549] [jointLog] [info] Marked 0 weighted equivalence classes as degenerate
+[2015-11-30 16:20:20.549] [jointLog] [info] iteration = 0 | max rel diff. = 8.15377e-16
+[2015-11-30 16:20:20.549] [jointLog] [info] iteration = 1 | max rel diff. = 8.15377e-16
+[2015-11-30 16:20:20.549] [jointLog] [info] Finished optimizer
+[2015-11-30 16:20:20.549] [jointLog] [info] writing output 
+
+[2015-11-30 16:20:20.549] [jointLog] [warning] NOTE: Read Lib [../data/P89/P89-5/150910/lib8578_C6REVANXX_trimmed.fastq] :
+
+Detected a strand bias > 1% in an unstranded protocol check the file: tmp_lib8578/libFormatCounts.txt for details
+
+[2015-11-30 16:20:20.544] [fileLog] [info] 
+At end of round 0
+==================
+Observed 3004892 total fragments (3004892 in most recent round)
+
+[2015-11-30 16:22:19.144] [jointLog] [info] parsing read library format
+[2015-11-30 16:22:19.193] [jointLog] [info] Loading Quasi index
+[2015-11-30 16:22:29.744] [jointLog] [info] done
+[2015-11-30 16:22:40.703] [fileLog] [info] 
+At end of round 0
+==================
+Observed 3004892 total fragments (3004892 in most recent round)
+
+[2015-11-30 16:22:40.702] [jointLog] [info] Computed 27834 rich equivalence classes for further processing
+[2015-11-30 16:22:40.702] [jointLog] [info] Counted 2026476 total reads in the equivalence classes 
+[2015-11-30 16:22:40.706] [jointLog] [info] Mapping rate = 67.4593%
+
+[2015-11-30 16:22:40.706] [jointLog] [info] finished quantifyLibrary()
+[2015-11-30 16:22:40.706] [jointLog] [info] Starting optimizer
+[2015-11-30 16:22:40.745] [jointLog] [info] Marked 1 weighted equivalence classes as degenerate
+[2015-11-30 16:22:40.747] [jointLog] [info] iteration = 0 | max rel diff. = 3107.08
+[2015-11-30 16:22:40.902] [jointLog] [info] iteration = 100 | max rel diff. = 0.334498
+[2015-11-30 16:22:41.050] [jointLog] [info] iteration = 200 | max rel diff. = 0.141171
+[2015-11-30 16:22:41.196] [jointLog] [info] iteration = 300 | max rel diff. = 0.0863905
+[2015-11-30 16:22:41.348] [jointLog] [info] iteration = 400 | max rel diff. = 0.0625
+[2015-11-30 16:22:41.516] [jointLog] [info] iteration = 500 | max rel diff. = 0.0491928
+[2015-11-30 16:22:41.680] [jointLog] [info] iteration = 600 | max rel diff. = 0.0440071
+[2015-11-30 16:22:41.840] [jointLog] [info] iteration = 700 | max rel diff. = 0.0354864
+[2015-11-30 16:22:41.995] [jointLog] [info] iteration = 800 | max rel diff. = 0.0319216
+[2015-11-30 16:22:42.155] [jointLog] [info] iteration = 900 | max rel diff. = 0.0275803
+[2015-11-30 16:22:42.324] [jointLog] [info] iteration = 1000 | max rel diff. = 0.0262288
+[2015-11-30 16:22:42.490] [jointLog] [info] iteration = 1100 | max rel diff. = 0.023299
+[2015-11-30 16:22:42.655] [jointLog] [info] iteration = 1200 | max rel diff. = 0.02067
+[2015-11-30 16:22:42.811] [jointLog] [info] iteration = 1300 | max rel diff. = 0.0180886
+[2015-11-30 16:22:42.980] [jointLog] [info] iteration = 1400 | max rel diff. = 0.0175765
+[2015-11-30 16:22:43.144] [jointLog] [info] iteration = 1500 | max rel diff. = 0.0168841
+[2015-11-30 16:22:43.314] [jointLog] [info] iteration = 1600 | max rel diff. = 0.0151075
+[2015-11-30 16:22:43.482] [jointLog] [info] iteration = 1700 | max rel diff. = 0.0151075
+[2015-11-30 16:22:43.655] [jointLog] [info] iteration = 1800 | max rel diff. = 0.0139283
+[2015-11-30 16:22:43.824] [jointLog] [info] iteration = 1900 | max rel diff. = 0.0139283
+[2015-11-30 16:22:44.009] [jointLog] [info] iteration = 2000 | max rel diff. = 0.011824
+[2015-11-30 16:22:44.181] [jointLog] [info] iteration = 2100 | max rel diff. = 0.0113353
+[2015-11-30 16:22:44.373] [jointLog] [info] iteration = 2200 | max rel diff. = 0.0113353
+[2015-11-30 16:22:44.548] [jointLog] [info] iteration = 2300 | max rel diff. = 0.010584
+[2015-11-30 16:22:44.731] [jointLog] [info] iteration = 2400 | max rel diff. = 0.010584
+[2015-11-30 16:22:44.793] [jointLog] [info] iteration = 2437 | max rel diff. = 0.00963222
+[2015-11-30 16:22:44.796] [jointLog] [info] Finished optimizer
+[2015-11-30 16:22:44.796] [jointLog] [info] writing output 
+

@@ -20,6 +20,10 @@ GENE_NAME="CAR"
 GENE_PARTS_FASTA="${SEQUENCE_DIR}/carGeneParts.fasta"
 python scripts/formatFasta.py $RAW_GENE_SEQ $GENE_NAME $GENE_PARTS_FASTA
 
+# Note: to create 'carGeneParts_endo.fasta', which contains only sequences of
+# endogenous features, simply remove lines for non-human gene segments
+GENE_PARTS_ENDO_FASTA="${SEQUENCE_DIR}/carGeneParts_endo.fasta"
+
 ### SIMULATE FASTQ READS
 
 # Create folder for outputs
@@ -35,6 +39,13 @@ NUM_READS=20
 MODE=1
 SIM_FASTQ_NO_MULTI="${SIM_DATA_DIR}/simCarParts_noMulti.fastq"
 python scripts/simulateReads.py $GENE_PARTS_FASTA $SIM_FASTQ_NO_MULTI \
+    $NUM_READS $MODE
+
+# Generate reads that map only to individual (endogenous) parts in the gene
+# construct
+MODE=1
+SIM_FASTQ_NO_MULTI_ENDO="${SIM_DATA_DIR}/simCarParts_noMulti_endo.fastq"
+python scripts/simulateReads.py $GENE_PARTS_ENDO_FASTA $SIM_FASTQ_NO_MULTI_ENDO \
     $NUM_READS $MODE
 
 # Generate only reads that span multiple adjacent parts in the gene construct

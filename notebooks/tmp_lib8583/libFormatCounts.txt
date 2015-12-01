@@ -3,11 +3,11 @@ Read library consisting of files: ../data/P89/P89-5/lib8583_C6REVANXX_trimmed.fa
 
 Expected format: Library format { type:single end, relative orientation:none, strandedness:unstranded }
 
-# of consistent alignments: 277
+# of consistent alignments: 6647459
 # of inconsistent alignments: 0
-strand bias = 0.249097 (0.5 is unbiased)
-# alignments with format Library format { type:single end, relative orientation:none, strandedness:sense }: 69
-# alignments with format Library format { type:single end, relative orientation:none, strandedness:antisense }: 208
+strand bias = 0.497083 (0.5 is unbiased)
+# alignments with format Library format { type:single end, relative orientation:none, strandedness:sense }: 3304338
+# alignments with format Library format { type:single end, relative orientation:none, strandedness:antisense }: 3343121
 
 ========
 ---- counts for each format type ---
@@ -33,7 +33,7 @@ Library format { type:single end, relative orientation:outward, strandedness:sen
 Library format { type:paired end, relative orientation:outward, strandedness:sense } : 0
 Library format { type:single end, relative orientation:inward, strandedness:sense } : 0
 Library format { type:paired end, relative orientation:inward, strandedness:sense } : 0
-Library format { type:single end, relative orientation:none, strandedness:sense } : 69
+Library format { type:single end, relative orientation:none, strandedness:sense } : 3304338
 Library format { type:paired end, relative orientation:none, strandedness:sense } : 0
 Library format { type:single end, relative orientation:matching, strandedness:antisense } : 0
 Library format { type:paired end, relative orientation:matching, strandedness:antisense } : 0
@@ -41,7 +41,7 @@ Library format { type:single end, relative orientation:outward, strandedness:ant
 Library format { type:paired end, relative orientation:outward, strandedness:antisense } : 0
 Library format { type:single end, relative orientation:inward, strandedness:antisense } : 0
 Library format { type:paired end, relative orientation:inward, strandedness:antisense } : 0
-Library format { type:single end, relative orientation:none, strandedness:antisense } : 208
+Library format { type:single end, relative orientation:none, strandedness:antisense } : 3343121
 Library format { type:paired end, relative orientation:none, strandedness:antisense } : 0
 Library format { type:single end, relative orientation:matching, strandedness:unstranded } : 0
 Library format { type:paired end, relative orientation:matching, strandedness:unstranded } : 0
