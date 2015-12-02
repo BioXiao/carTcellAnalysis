@@ -2,7 +2,7 @@
 
 SEQUENCE_DIR="data/sequence"
 INDEX_DIR="data/indexes/salmon"
-SALMON_EXEC="/Users/jaeddy/code/github/resources/SalmonBeta-0.5.0_OSX-10.10/bin/salmon"
+SALMON_EXEC="tools/SalmonBeta-0.5.0_OSX-10.10/bin/salmon"
 
 ### BUILD SALMON INDEXES
 
