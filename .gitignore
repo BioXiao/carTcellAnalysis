@@ -3,3 +3,7 @@ data
 
 # Ignore tools (dependencies)
 tools
+
+# Ignore R project stuff
+.Rproj.user
+*.Rproj
