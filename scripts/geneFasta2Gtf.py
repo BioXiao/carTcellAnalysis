@@ -19,24 +19,39 @@ def read_fasta(fastaFile):
 
 def build_fasta_list(fastaRecords, gene, fastaList=[]):
     totalLength = 0
+    spacer = 1 # use 5 for gapped reference
     for idx,record in enumerate(fastaRecords):
-        recordStart = totalLength + 6
-        recordStop = totalLength + len(record) + 5
-        fastaList.append(('\t').join(['0', 'NA', 'exon',
-                                      str(recordStart), str(recordStop),
-                                      '.', '+', '.',
-                                      ('gene_id "%s"; '
-                                       'transcript_id "%s"; '
-                                       'exon_number "%s"; '
-                                       'exon_name "%s";\n') %
-                                       (gene, gene + '-1', idx + 1, record.name)]))
-        totalLength += len(record) + 10
-    fastaList.append(('\t').join(['0', 'NA', 'transcript',
-                                      str(1), str(totalLength),
-                                      '.', '+', '.',
-                                      ('gene_id "%s"; '
-                                       'transcript_id "%s";\n') %
-                                       (gene, gene + '-1')]))
+        recordStart = totalLength + spacer + 1
+        recordStop = totalLength + len(record) + spacer
+        # fastaList.append(('\t').join([gene + '-1', 'custom', 'exon',
+        #                               str(recordStart), str(recordStop),
+        #                               '.', '+', '.',
+        #                               ('gene_id "%s"; '
+        #                                'transcript_id "%s"; '
+        #                                'exon_number "%s"; '
+        #                                'exon_name "%s";\n') %
+        #                                (gene, gene + '-1', idx + 1, record.name)]))
+        # fastaList.append(('\t').join([gene + '-1', 'custom', 'CDS',
+        #                               str(recordStart), str(recordStop),
+        #                               '.', '+', '.',
+        #                               ('gene_id "%s"; '
+        #                                'transcript_id "%s"; '
+        #                                'exon_number "%s"; '
+        #                                'exon_name "%s";\n') %
+        #                                (gene, gene + '-1', idx + 1, record.name)]))
+        fastaList.append(('\t').join([gene + '-1', 'custom', 'transcript',
+                                          str(recordStart), str(recordStop),
+                                          '.', '+', '.',
+                                          ('gene_id "%s"; '
+                                           'transcript_id "%s";\n') %
+                                           (gene, record.name)]))
+        totalLength += len(record) + (spacer * 2)
+    # fastaList.append(('\t').join([gene + '-1', 'custom', 'transcript',
+    #                                   str(1), str(totalLength),
+    #                                   '.', '+', '.',
+    #                                   ('gene_id "%s"; '
+    #                                    'transcript_id "%s";\n') %
+    #                                    (gene, gene + '-1')]))
     return fastaList
 
 def write_gtf(fastaList, gtfOutFile):
