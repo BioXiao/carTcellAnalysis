@@ -4,37 +4,120 @@ SEQUENCE_DIR="data/sequence"
 INDEX_DIR="data/indexes/rapmap"
 
 RAPMAP_EXEC="docker run --rm -v ${PWD}/data:/home/data jaeddy/rapmap:0.1.0-pre rapmap"
+SAMTOOLS_EXEC="samtools"
 
-### BUILD SALMON INDEXES
+# Set k-mer size
+K=31
 
-# Treat each part of the gene construct as a separate transcript
-GENE_PARTS_FASTA="${SEQUENCE_DIR}/carGeneParts.fasta"
-GENE_PARTS_INDEX="${INDEX_DIR}/carGeneParts"
+### BUILD RAPMAP INDEXES
 
-if [ ! -e "$GENE_PARTS_INDEX" ]; then
-    echo "Building gene parts index..."
+# Build quasiindex for full CAR transcript
+CAR_FASTA="${SEQUENCE_DIR}/carTranscript.fasta"
+CAR_INDEX="${INDEX_DIR}/carTranscript_k${K}"
+
+if [ ! -e "$CAR_INDEX" ]; then
+    echo "Building CAR transcript quasiindex..."
     $RAPMAP_EXEC quasiindex \
-        -t $GENE_PARTS_FASTA \
-        -i $GENE_PARTS_INDEX \
+        -t $CAR_FASTA \
+        -i $CAR_INDEX \
+        -k $K
+fi
+
+# Build pseudoindex for full CAR transcript
+CAR_PINDEX="${INDEX_DIR}/carTranscript_k${K}_p"
+
+if [ ! -e "$CAR_PINDEX" ]; then
+    echo "Building CAR transcript pseudoindex..."
+    $RAPMAP_EXEC pseudoindex \
+        -t $CAR_FASTA \
+        -i $CAR_PINDEX \
         -k 19
 fi
 
-# ### TEST SALMON WITH SIMULATED READS
+# # Build quasiindex for GRCh38 + CAR transcript
+# GRCH38_CAR_FASTA="${SEQUENCE_DIR}/GRCh38_CAR_transcripts.fa"
+# GRCH38_CAR_INDEX="${INDEX_DIR}/GRCh38_CAR"
 #
-# SIM_DATA_DIR="data/simFastqs"
-# SIM_FASTQ_NO_MULTI="${SIM_DATA_DIR}/simCarParts_noMulti.fastq"
-#
-# OUT_DIR="data/results"
-# if [ ! -e "$OUT_DIR" ]; then
-#     mkdir -p $OUT_DIR
+# if [ ! -e "$GRCH38_CAR_INDEX" ]; then
+#     echo "Building GRCh38 + CAR quasiindex..."
+#     $RAPMAP_EXEC quasiindex \
+#         -t $GRCH38_CAR_FASTA \
+#         -i $GRCH38_CAR_INDEX \
+#         -k 19
 # fi
+
+
+### TEST SALMON WITH SIMULATED READS
+
+SIM_DATA_DIR="data/simFastqs"
+SIM_FASTQ="${SIM_DATA_DIR}/simCarParts.fastq"
+
+OUT_DIR="data/results/rapMap"
+if [ ! -e "$OUT_DIR" ]; then
+    mkdir -p $OUT_DIR
+fi
+
+# Test 1
+
+# Map simulated reads to CAR transcript
+SIM_OUT="${OUT_DIR}/simTest_k${K}"
+
+if [ ! -e "${SIM_OUT}.bam" ]; then
+    echo "Quasimap ${SIM_FASTQ}"
+    $RAPMAP_EXEC quasimap \
+        -i $CAR_INDEX \
+        -r $SIM_FASTQ \
+        | $SAMTOOLS_EXEC view -bS - \
+        | $SAMTOOLS_EXEC sort - $SIM_OUT && \
+        $SAMTOOLS_EXEC index ${SIM_OUT}.bam
+fi
+
+### TEST SALMON WITH REAL LIBRARY
+
+DATA_DIR="data/P89"
+LIB7582_FASTQ="${DATA_DIR}/lib7582_C6VC6ANXX_trimmed.fastq"
+
+# Test 2
+
+# Map simulated reads to CAR transcript
+LIB7582_OUT="${OUT_DIR}/lib7582_k${K}"
+
+if [ ! -e "${LIB7582_OUT}.bam" ]; then
+    echo "Quasimap ${LIB7582_FASTQ} to ${CAR_INDEX}"
+    $RAPMAP_EXEC quasimap \
+        -i $CAR_INDEX \
+        -r $LIB7582_FASTQ \
+        | $SAMTOOLS_EXEC view -bS - \
+        | $SAMTOOLS_EXEC sort - $LIB7582_OUT && \
+        $SAMTOOLS_EXEC index ${LIB7582_OUT}.bam
+fi
+
+# Test 3
+
+# Pseudoalign simulated reads to CAR transcript
+LIB7582_POUT="${OUT_DIR}/lib7582_k${K}_p"
+
+if [ ! -e "${LIB7582_POUT}.bam" ]; then
+    echo "Pseudomap ${LIB7582_FASTQ} to ${CAR_PINDEX}"
+    $RAPMAP_EXEC pseudomap \
+        -i $CAR_PINDEX \
+        -r $LIB7582_FASTQ \
+        | $SAMTOOLS_EXEC view -bS - \
+        | $SAMTOOLS_EXEC sort - $LIB7582_POUT && \
+        $SAMTOOLS_EXEC index ${LIB7582_POUT}.bam
+fi
+
+# Test 4
+
+# # Map simulated reads to CAR transcript
+# LIB7582_XOUT="${OUT_DIR}/lib7582_x"
 #
-# # Test 1
-#
-# # Map simulated reads to gene construct parts
-# GENE_PART_OUT_DIR="${OUT_DIR}/rapMapTest"
-#
-# $RAPMAP_EXEC quasimap \
-#     -i $GENE_PARTS_INDEX \
-#     -r $SIM_FASTQ_NO_MULTI \
-#     -o $GENE_PART_OUT_DIR
+# if [ ! -e "${LIB7582_XOUT}.bam" ]; then
+#     echo "Quasimap ${LIB7582_FASTQ} to ${GRCH38_CAR_INDEX}"
+#     $RAPMAP_EXEC quasimap \
+#         -i $GRCH38_CAR_INDEX \
+#         -r $LIB7582_FASTQ \
+#         | $SAMTOOLS_EXEC view -bS - \
+#         | $SAMTOOLS_EXEC sort - $LIB7582_XOUT && \
+#         $SAMTOOLS_EXEC index ${LIB7582_XOUT}.bam
+# fi
