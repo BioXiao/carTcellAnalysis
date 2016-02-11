@@ -7,44 +7,56 @@ RAPMAP_EXEC="docker run --rm -v ${PWD}/data:/home/data jaeddy/rapmap:0.1.0-pre r
 SAMTOOLS_EXEC="samtools"
 
 # Set k-mer size
-K=31
+K=19
 
 ### BUILD RAPMAP INDEXES
 
 # Build quasiindex for full CAR transcript
 CAR_FASTA="${SEQUENCE_DIR}/carTranscript.fasta"
-CAR_INDEX="${INDEX_DIR}/carTranscript_k${K}"
+CAR_INDEX="${INDEX_DIR}/carTranscript"
 
-if [ ! -e "$CAR_INDEX" ]; then
-    echo "Building CAR transcript quasiindex..."
+# if [ ! -e "$CAR_INDEX" ]; then
+#     echo "Building CAR transcript quasiindex..."
+#     $RAPMAP_EXEC quasiindex \
+#         -t $CAR_FASTA \
+#         -i $CAR_INDEX \
+#         -k $K
+# fi
+#
+# # Build pseudoindex for full CAR transcript
+# CAR_PINDEX="${INDEX_DIR}/carTranscript_k${K}_p"
+#
+# if [ ! -e "$CAR_PINDEX" ]; then
+#     echo "Building CAR transcript pseudoindex..."
+#     $RAPMAP_EXEC pseudoindex \
+#         -t $CAR_FASTA \
+#         -i $CAR_PINDEX \
+#         -k 19
+# fi
+
+# Build quasiindex for GRCh38 + CAR transcript
+GRCH38_CAR_FASTA="${SEQUENCE_DIR}/GRCh38_CAR_transcripts.fa"
+GRCH38_CAR_INDEX="${INDEX_DIR}/GRCh38_CAR"
+
+if [ ! -e "$GRCH38_CAR_INDEX" ]; then
+    echo "Building GRCh38 + CAR quasiindex..."
     $RAPMAP_EXEC quasiindex \
-        -t $CAR_FASTA \
-        -i $CAR_INDEX \
-        -k $K
-fi
-
-# Build pseudoindex for full CAR transcript
-CAR_PINDEX="${INDEX_DIR}/carTranscript_k${K}_p"
-
-if [ ! -e "$CAR_PINDEX" ]; then
-    echo "Building CAR transcript pseudoindex..."
-    $RAPMAP_EXEC pseudoindex \
-        -t $CAR_FASTA \
-        -i $CAR_PINDEX \
+        -t $GRCH38_CAR_FASTA \
+        -i $GRCH38_CAR_INDEX \
         -k 19
 fi
 
-# # Build quasiindex for GRCh38 + CAR transcript
-# GRCH38_CAR_FASTA="${SEQUENCE_DIR}/GRCh38_CAR_transcripts.fa"
-# GRCH38_CAR_INDEX="${INDEX_DIR}/GRCh38_CAR"
-#
-# if [ ! -e "$GRCH38_CAR_INDEX" ]; then
-#     echo "Building GRCh38 + CAR quasiindex..."
-#     $RAPMAP_EXEC quasiindex \
-#         -t $GRCH38_CAR_FASTA \
-#         -i $GRCH38_CAR_INDEX \
-#         -k 19
-# fi
+# Build quasiindex for GRCh38 + CAR transcript
+HG38_CAR_FASTA="${SEQUENCE_DIR}/hg38_CAR_transcripts.fa"
+HG38_CAR_INDEX="${INDEX_DIR}/hg38_CAR"
+
+if [ ! -e "$HG38_CAR_INDEX" ]; then
+    echo "Building GRCh38 + CAR quasiindex..."
+    $RAPMAP_EXEC quasiindex \
+        -t $HG38_CAR_FASTA \
+        -i $HG38_CAR_INDEX \
+        -k 19
+fi
 
 
 ### TEST SALMON WITH SIMULATED READS
@@ -63,7 +75,7 @@ fi
 SIM_OUT="${OUT_DIR}/simTest_k${K}"
 
 if [ ! -e "${SIM_OUT}.bam" ]; then
-    echo "Quasimap ${SIM_FASTQ}"
+    echo "Quasimap ${SIM_FASTQ} to ${CAR_INDEX}"
     $RAPMAP_EXEC quasimap \
         -i $CAR_INDEX \
         -r $SIM_FASTQ \
@@ -84,7 +96,7 @@ LIB7582_OUT="${OUT_DIR}/lib7582_k${K}"
 
 if [ ! -e "${LIB7582_OUT}.bam" ]; then
     echo "Quasimap ${LIB7582_FASTQ} to ${CAR_INDEX}"
-    $RAPMAP_EXEC quasimap \
+    $RAPMAP_EXEC quasimap -t 4 \
         -i $CAR_INDEX \
         -r $LIB7582_FASTQ \
         | $SAMTOOLS_EXEC view -bS - \
@@ -94,30 +106,15 @@ fi
 
 # Test 3
 
-# Pseudoalign simulated reads to CAR transcript
-LIB7582_POUT="${OUT_DIR}/lib7582_k${K}_p"
+# Map simulated reads to CAR transcript
+LIB7582_XOUT="${OUT_DIR}/lib7582_x_k${K}"
 
-if [ ! -e "${LIB7582_POUT}.bam" ]; then
-    echo "Pseudomap ${LIB7582_FASTQ} to ${CAR_PINDEX}"
-    $RAPMAP_EXEC pseudomap \
-        -i $CAR_PINDEX \
+if [ ! -e "${LIB7582_XOUT}.bam" ]; then
+    echo "Quasimap ${LIB7582_FASTQ} to ${HG38_CAR_INDEX}"
+    $RAPMAP_EXEC quasimap -t 4 \
+        -i $HG38_CAR_INDEX \
         -r $LIB7582_FASTQ \
         | $SAMTOOLS_EXEC view -bS - \
-        | $SAMTOOLS_EXEC sort - $LIB7582_POUT && \
-        $SAMTOOLS_EXEC index ${LIB7582_POUT}.bam
+        | $SAMTOOLS_EXEC sort - $LIB7582_XOUT && \
+        $SAMTOOLS_EXEC index ${LIB7582_XOUT}.bam
 fi
-
-# Test 4
-
-# # Map simulated reads to CAR transcript
-# LIB7582_XOUT="${OUT_DIR}/lib7582_x"
-#
-# if [ ! -e "${LIB7582_XOUT}.bam" ]; then
-#     echo "Quasimap ${LIB7582_FASTQ} to ${GRCH38_CAR_INDEX}"
-#     $RAPMAP_EXEC quasimap \
-#         -i $GRCH38_CAR_INDEX \
-#         -r $LIB7582_FASTQ \
-#         | $SAMTOOLS_EXEC view -bS - \
-#         | $SAMTOOLS_EXEC sort - $LIB7582_XOUT && \
-#         $SAMTOOLS_EXEC index ${LIB7582_XOUT}.bam
-# fi
