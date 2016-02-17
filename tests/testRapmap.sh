@@ -118,3 +118,26 @@ if [ ! -e "${LIB7582_XOUT}.bam" ]; then
         | $SAMTOOLS_EXEC sort - $LIB7582_XOUT && \
         $SAMTOOLS_EXEC index ${LIB7582_XOUT}.bam
 fi
+
+
+# Test on a few libs
+
+XCRIPT_LIST=$(grep ">" ${SEQUENCE_DIR}/combined_CAR_endo.fa \
+              | awk -F" " '{gsub(">", ""); print $1}')
+
+while read line; do
+    in_file=${line##*/}
+    lib_id=${in_file%.*}
+    out_prefix="${lib_id}_hg38_CAR"
+    echo $out_prefix
+
+    echo "Quasimap ${in_file} to ${HG38_CAR_INDEX}"
+    # if [ ! -e "${out_prefix}.bam" ]; then
+        $RAPMAP_EXEC quasimap \
+        -i $HG38_CAR_INDEX \
+        -r $line \
+        | $SAMTOOLS_EXEC view -bS - \
+        | $SAMTOOLS_EXEC sort - $out_prefix && \
+        $SAMTOOLS_EXEC index ${out_prefix}.bam
+    # fi
+done < <(find ${DATA_DIR} -name "*fastq*" | head -1)
