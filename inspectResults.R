@@ -13,13 +13,22 @@ library(dplyr)
 # assumes result files located in the following subfolder
 result_folder <- "data/results"
 
+# # get list of all low confidence read count files for relevant flowcells
+# gene_hits_files <- list.files(result_folder, full.names = TRUE) %>% 
+#     .[str_detect(., "150(729|910).csv")]
+# 
+# # get list of all high confidence read count files for relevant flowcells
+# gene_hits_hc_files <- list.files(result_folder, full.names = TRUE) %>% 
+#     .[str_detect(., "150(729|910)_high_conf.csv")]
+
+# for P85
 # get list of all low confidence read count files for relevant flowcells
 gene_hits_files <- list.files(result_folder, full.names = TRUE) %>% 
-    .[str_detect(., "150(729|910).csv")]
+    .[str_detect(., "150528.csv")]
 
 # get list of all high confidence read count files for relevant flowcells
 gene_hits_hc_files <- list.files(result_folder, full.names = TRUE) %>% 
-    .[str_detect(., "150(729|910)_high_conf.csv")]
+    .[str_detect(., "150528_high_conf.csv")]
 
 # Load data ---------------------------------------------------------------
 

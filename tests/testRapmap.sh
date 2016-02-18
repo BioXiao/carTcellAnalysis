@@ -86,58 +86,41 @@ fi
 
 ### TEST SALMON WITH REAL LIBRARY
 
-DATA_DIR="data/P89"
-LIB7582_FASTQ="${DATA_DIR}/lib7582_C6VC6ANXX_trimmed.fastq"
-
-# Test 2
-
-# Map simulated reads to CAR transcript
-LIB7582_OUT="${OUT_DIR}/lib7582_k${K}"
-
-if [ ! -e "${LIB7582_OUT}.bam" ]; then
-    echo "Quasimap ${LIB7582_FASTQ} to ${CAR_INDEX}"
-    $RAPMAP_EXEC quasimap -t 4 \
-        -i $CAR_INDEX \
-        -r $LIB7582_FASTQ \
-        | $SAMTOOLS_EXEC view -bS - \
-        | $SAMTOOLS_EXEC sort - $LIB7582_OUT && \
-        $SAMTOOLS_EXEC index ${LIB7582_OUT}.bam
-fi
-
-# Test 3
-
-# Map simulated reads to CAR transcript
-LIB7582_XOUT="${OUT_DIR}/lib7582_x_k${K}"
-
-if [ ! -e "${LIB7582_XOUT}.bam" ]; then
-    echo "Quasimap ${LIB7582_FASTQ} to ${HG38_CAR_INDEX}"
-    $RAPMAP_EXEC quasimap -t 4 \
-        -i $HG38_CAR_INDEX \
-        -r $LIB7582_FASTQ \
-        | $SAMTOOLS_EXEC view -bS - \
-        | $SAMTOOLS_EXEC sort - $LIB7582_XOUT && \
-        $SAMTOOLS_EXEC index ${LIB7582_XOUT}.bam
-fi
-
+DATA_DIR="data/P89_bulk"
 
 # Test on a few libs
 
 XCRIPT_LIST=$(grep ">" ${SEQUENCE_DIR}/combined_CAR_endo.fa \
               | awk -F" " '{gsub(">", ""); print $1}')
 
-while read line; do
-    in_file=${line##*/}
+while read fastq; do
+    in_file=${fastq##*/}
     lib_id=${in_file%.*}
-    out_prefix="${lib_id}_hg38_CAR"
-    echo $out_prefix
+    out_prefix="data/results/rapmap/P89_bulk_hg38/${lib_id}_hg38_CAR"
 
-    echo "Quasimap ${in_file} to ${HG38_CAR_INDEX}"
+    printf "\n>> Quasimap %s to %s...\n" "${in_file}" "${HG38_CAR_INDEX}"
     # if [ ! -e "${out_prefix}.bam" ]; then
-        $RAPMAP_EXEC quasimap \
+        time $RAPMAP_EXEC quasimap -t 4 \
         -i $HG38_CAR_INDEX \
-        -r $line \
+        -r $fastq \
         | $SAMTOOLS_EXEC view -bS - \
         | $SAMTOOLS_EXEC sort - $out_prefix && \
         $SAMTOOLS_EXEC index ${out_prefix}.bam
     # fi
-done < <(find ${DATA_DIR} -name "*fastq*" | head -1)
+done < <(find ${DATA_DIR} -name "*fastq*")
+
+while read fastq; do
+    in_file=${fastq##*/}
+    lib_id=${in_file%.*}
+    out_prefix="data/results/rapmap/P89_bulk_CAR/${lib_id}_CAR"
+
+    printf "\n>> Quasimap %s to %s...\n" "${in_file}" "${CAR_INDEX}"
+    # if [ ! -e "${out_prefix}.bam" ]; then
+        time $RAPMAP_EXEC quasimap -t 4 \
+        -i $CAR_INDEX \
+        -r $fastq \
+        | $SAMTOOLS_EXEC view -bS - \
+        | $SAMTOOLS_EXEC sort - $out_prefix && \
+        $SAMTOOLS_EXEC index ${out_prefix}.bam
+    # fi
+done < <(find ${DATA_DIR} -name "*fastq*")
