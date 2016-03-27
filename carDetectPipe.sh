@@ -76,16 +76,17 @@ while read line; do
         fi
         time $RAPMAP_EXEC quasimap -t 4 \
             -i $HG38_CAR_RAPMAP_INDEX \
-            -r "${tmp_dir}/$(basename $file)" > ${tmp_prefix}.sam
+            -r "${tmp_dir}/$(basename $file)" \
+            -o ${tmp_prefix}.sam
 
         echo "Formatting output..."
         time ($SAMTOOLS_EXEC view -bS -@ 4 ${tmp_prefix}.sam \
             > ${tmp_prefix}.bam && \
             $SAMTOOLS_EXEC sort -@ 4 ${tmp_prefix}.bam ${tmp_prefix}_sorted && \
-            $SAMTOOLS_EXEC index -@ 4 ${tmp_prefix}_sorted.bam && \
+            $SAMTOOLS_EXEC index ${tmp_prefix}_sorted.bam && \
             $SAMTOOLS_EXEC view -b -@ 4 ${tmp_prefix}_sorted.bam $XCRIPT_LIST \
             > ${out_prefix}.bam && \
-            $SAMTOOLS_EXEC index -@ 4 ${out_prefix}.bam)
+            $SAMTOOLS_EXEC index ${out_prefix}.bam)
     else
         echo "Output already exists."
     fi
