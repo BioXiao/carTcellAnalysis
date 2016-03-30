@@ -87,4 +87,5 @@ bulk_metric_dat <- lapply(bulk_metric_file_list, function(x) {
     bind_rows() %>% 
     filter(!is.na(libid))
 
-
+# save image
+save(bulk_lib_dat, bulk_metric_dat, sc_lib_dat, sc_metric_dat, file = "data/sample_metrics_data.RData")

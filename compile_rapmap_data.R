@@ -73,9 +73,14 @@ plot_coverage <- function(cov_df, xlims) {
         theme_bw()
 }
 
-
+# collect & store coverage data for all samples
 bam_files <- list.files("~/Box Sync/data/projects/carTcellAnalysis/results/rapmap/",
                         full.names = TRUE, recursive = TRUE) %>% 
     .[str_detect(., ".bam$")]
 
 cov_df <- build_coverage_df(as.list(bam_files), car_gtf, "CAR-1", 10)
+
+# save image
+cov_dat <- cov_df
+save(cov_dat, file = "data/sample_rapmap_data.RData")
+
