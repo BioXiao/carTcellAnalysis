@@ -6,4 +6,5 @@ tools
 
 # Ignore R project stuff
 .Rproj.user
+.Rhistory
 *.Rproj
