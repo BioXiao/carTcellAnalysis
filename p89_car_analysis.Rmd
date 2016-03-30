@@ -1,0 +1,118 @@
+---
+title: "P89 RNA-seq CAR transcript analysis"
+author: "James Eddy"
+date: "March 30, 2016"
+output: html_document
+---
+
+```{r load_packages}
+library(stringr)
+library(dplyr)
+library(ggplot2)
+library(viridis)
+```
+
+```{r load_data}
+load("data/sample_metrics_data.RData")
+load("data/sample_rapmap_data.RData")
+load("data/sample_salmon_data.RData")
+```
+
+```{r data_clean_fxns}
+# clean up duplicated headers
+clean_dup_names <- function(df) {
+    df_names <- names(df)
+    is_dup_name <- duplicated(df_names)
+    df_names[is_dup_name] <- str_c(df_names[is_dup_name], "2")
+    names(df) <- df_names
+    return(df)
+}
+
+# simplify library ID
+simplify_lib_id <- function(df) {
+    df_names <- names(df)
+    is_lib_name <- str_detect(tolower(df_names), "lib.*id")
+    df_names[is_lib_name] <- "lib_id"
+    names(df) <- df_names
+    
+    df %>% 
+        mutate(lib_id = str_extract(lib_id, "lib[0-9]+"))
+}
+
+# clean/relabel donor ID
+clean_donor_ids <- function(df) {
+    df %>% 
+        mutate(donor_id = tolower(donor_id))
+}
+
+# relabel timepoints
+relabel_timepoints <- function(df) {
+    df %>% 
+        mutate(timepoint = str_replace(timepoint, " ", ""),
+               timepoint = str_replace(timepoint, "InfusionProduct", "IP"),
+               timepoint = str_replace(timepoint, "Day(7|8|12)", "t1"),
+               timepoint = str_replace(timepoint, "Day(26|28|29|33)", "t2"))
+}
+```
+
+```{r prep_bulk_cov_dat}
+bulk_cov_dat <- bulk_lib_dat %>% 
+    clean_dup_names() %>% 
+    simplify_lib_id() %>%
+    clean_donor_ids() %>% 
+    select(lib_id, donor_id, timepoint) %>% 
+    relabel_timepoints() %>% 
+    left_join(cov_dat, by = c("lib_id" = "lib_id")) %>% 
+    left_join(bulk_metric_dat %>% 
+                  clean_dup_names() %>% 
+                  simplify_lib_id() %>% 
+                  select(lib_id, fastq_total_reads),
+              by = c("lib_id" = "lib_id")) %>% 
+    left_join(map_rate_dat, by = c("lib_id" = "lib_id")) %>% 
+    mutate(mapped_reads = fastq_total_reads * map_rate,
+           norm_cov = cov / mapped_reads) %>% 
+    left_join(salmon_quant_dat %>% 
+                  select(lib_id, TPM))
+```
+
+```{r plot_bulk_cov}
+bulk_cov_dat %>% 
+    ggplot(aes(x = pos, y = norm_cov, colour = log2(TPM + 1))) +
+    geom_line(alpha = 0.5) +
+#     geom_smooth(se = FALSE) +
+    scale_color_viridis() +
+    theme_bw() +
+    facet_grid(donor_id ~ timepoint)
+```
+
+```{r prep_p89_c1_cov_dat}
+p89_c1_cov_dat <- test <- sc_lib_dat %>% 
+    clean_dup_names() %>% 
+    clean_donor_ids() %>% 
+    filter(donor_id == "x194") %>% 
+    simplify_lib_id() %>% 
+    select(lib_id, donor_id, timepoint) %>% 
+    relabel_timepoints() %>% 
+    left_join(cov_dat, by = c("lib_id" = "lib_id")) %>% 
+    left_join(sc_metric_dat %>% 
+                  clean_dup_names() %>% 
+                  simplify_lib_id() %>% 
+                  select(lib_id, fastq_total_reads),
+              by = c("lib_id" = "lib_id")) %>% 
+    left_join(map_rate_dat, by = c("lib_id" = "lib_id")) %>% 
+    mutate(mapped_reads = fastq_total_reads * map_rate,
+           norm_cov = cov / mapped_reads) %>% 
+    left_join(salmon_quant_dat %>% 
+                  select(lib_id, TPM))
+```
+
+```{r plot_p89_c1_cov}
+p89_c1_cov_dat %>% 
+    ggplot(aes(x = pos, y = norm_cov, colour = log2(TPM + 1))) +
+    geom_line(alpha = 0.5) +
+#     geom_smooth(se = FALSE) +
+    scale_color_viridis() +
+    theme_bw() +
+    facet_grid(donor_id ~ timepoint)
+```
+
