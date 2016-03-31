@@ -24,6 +24,14 @@ sample_file_list <- list(
 
 p89_bulk <- "/Volumes/genomics/Illumina/150910_D00565_0096_AC6REVANXX/For analyst/P89 - Cameron/Bulk samples P89-6, -8, -10. -11, -12, -13/P89 bulk libs.xlsx"
 
+p85_sample_file_list <- list(
+    p85_5_1 = "/Volumes/genomics/Illumina/150528_D00565_0086_BC6VC8ANXX/For Analyst/P85 Prlic/P85-5 C1 LibAnnotation (1of6) 1771023212_12May2015.xlsx",
+    p85_5_2 = "/Volumes/genomics/Illumina/150528_D00565_0086_BC6VC8ANXX/For Analyst/P85 Prlic/P85-5 C1 LibAnnotation (2of6) 1771023213_13May2015.xlsx",
+    p85_5_3 = "/Volumes/genomics/Illumina/150528_D00565_0086_BC6VC8ANXX/For Analyst/P85 Prlic/P85-5 C1 LibAnnotation (3of6) 1771023214_14May2015.xlsx",
+    p85_6_1 = "/Volumes/genomics/Illumina/150528_D00565_0086_BC6VC8ANXX/For Analyst/P85 Prlic/P85-6 C1 LibAnnotation (4of6) 1771023215_18May2015.xlsx",
+    p85_6_2 = "/Volumes/genomics/Illumina/150528_D00565_0086_BC6VC8ANXX/For Analyst/P85 Prlic/P85-6 C1 LibAnnotation (5of6) 1771023216_19May2015.xlsx",
+    p85_6_3 = "/Volumes/genomics/Illumina/150528_D00565_0086_BC6VC8ANXX/For Analyst/P85 Prlic/P85-6 C1 LibAnnotation (6of6) 1771023217_20May2015.xlsx"
+)
 
 # specify metric file paths -----------------------------------------------
 
@@ -44,6 +52,10 @@ bulk_metric_file_list <- list(
     p89_13 = "/Volumes/genomics/Illumina/150910_D00565_0096_AC6REVANXX/Project_P89-13Processed_150917/metrics/P89-13_C6REVANXX_150917_combined_metrics.csv"
 )
 
+p85_metric_file_list <- list(
+    p85_5 = "/Volumes/genomics/Illumina/150528_D00565_0086_BC6VC8ANXX/Project_P85-5Processed_new/metrics/C6VC8ANXX_combined_metrics.csv",
+    p85_6 = "/Volumes/genomics/Illumina/150528_D00565_0086_BC6VC8ANXX/Project_P85-6Processed_new/metrics/C6VC8ANXX_combined_metrics.csv"
+)
 # utility functions -------------------------------------------------------
 
 snake_case <- function(str) {
@@ -70,6 +82,12 @@ bulk_lib_dat <- read_excel(p89_bulk) %>%
     separate(sample_name, c("donor_id", "timepoint"), 
              remove = FALSE, sep = "_", extra = "drop")
 
+p85_lib_dat <- lapply(p85_sample_file_list, function(x) {
+    read_excel(x) %>% 
+        df_to_snake_case()
+}) %>% 
+    Reduce(full_join, .) %>% 
+    filter(!is.na(libid))
 
 # load metrics data -------------------------------------------------------
 
@@ -87,5 +105,15 @@ bulk_metric_dat <- lapply(bulk_metric_file_list, function(x) {
     bind_rows() %>% 
     filter(!is.na(libid))
 
+p85_metric_dat <- lapply(p85_metric_file_list, function(x) {
+    read_csv(x, na = "?") %>% 
+        df_to_snake_case()
+}) %>% 
+    bind_rows() %>% 
+    filter(!is.na(libid))
+
 # save image
-save(bulk_lib_dat, bulk_metric_dat, sc_lib_dat, sc_metric_dat, file = "data/sample_metrics_data.RData")
+save(bulk_lib_dat, bulk_metric_dat, 
+     sc_lib_dat, sc_metric_dat, 
+     p85_lib_dat, p85_metric_dat,
+     file = "data/sample_metrics_data.RData")
