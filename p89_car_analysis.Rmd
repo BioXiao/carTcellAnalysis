@@ -204,8 +204,7 @@ p89_c1_cov_dat %>%
     mutate(segment = factor(segment, 
                             levels = xcript_dat$transcript_id)) %>% 
     filter(!is.na(segment)) %>% 
-    ggplot(aes(x = segment, y = log10(cov + 1))) +
-    geom_jitter(aes(colour = CAR)) +
-    facet_grid(donor_id ~ timepoint)
+    ggplot(aes(x = segment)) +
+    geom_bar(aes(colour = donor_id), position = "dodge")
 ```
 
