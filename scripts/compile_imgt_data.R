@@ -2,9 +2,20 @@
 library(dplyr)
 library(stringr)
 library(tidyr)
-library(devtools)
-jxn_script_url <- "https://raw.githubusercontent.com/jaeddy/tcrSeqAnalysis/master/R/prep_junctions.R"
-source_url(jxn_script_url)
+
+# Function to filter IMGT junctions
+filter_imgt_jxns <- function(imgt_jxns, min_length = 6) {
+    
+    imgt_jxns <- imgt_jxns %>% 
+        filter(str_detect(v_gene, "^((?![C-G]).)*$"),
+               str_detect(j_gene, "^((?![C-G]).)*$"),
+               str_detect(junction, "^C"),
+               str_detect(junction, "^((?!(\\*|_)).)*$"),
+               !duplicated(.[, c(1:4)]),
+               str_length(junction) > min_length)
+    
+    return(imgt_jxns)
+}
 
 imgt_file <- "data/NHL_IMGT_productive_TCRs_89_5_9_unique.txt"
 # Read and filter IMGT junctions
