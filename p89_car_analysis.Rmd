@@ -6,11 +6,16 @@ output: html_document
 ---
 
 ```{r global_opts, echo=FALSE}
-knitr::opts_chunk$set(fig.width=8.5, fig.align='center',
+knitr::opts_chunk$set(fig.width=9, fig.align='center',
                       echo=FALSE, warning=FALSE, message=FALSE)
+
+## numbers >= 10^5 will be denoted in scientific notation,
+## and rounded to 2 digits
+options(scipen = 1, digits = 2)
 ```
 
 ```{r load_packages}
+library(knitr)
 library(stringr)
 library(tidyr)
 library(dplyr)
@@ -28,6 +33,18 @@ myCbPal[3] <- "#666666"
 
 ## Overview
 
+I compared **coverage profiles** and **estimated abundances** for *CAR* and
+related transcripts using three sets of samples:
+
++ **P89 bulk:** sorted CD8+ T-cells, sequenced as bulk populations (expected
+to express *CAR*)
++ **P89 single-cell:** CD8+ T-cells, captured using **C1** instrument and
+sequenced invididually (expected to express *CAR*)
++ **P85 single-cell:** MAIT-cells, captured using **C1** and sequenced
+individually (not expected to express *CAR*)
+
+\  
+
 ## Getting the data
 
 Data presented below was generated and/or compiled from several sources:
@@ -42,6 +59,8 @@ a modified human reference transcriptome (hg38)
 + **`salmon_imgt_data`:** predicted/identified TCR junction sequences and
 alleles in single-cell libraries, as produced by assembly with `Trinity` 
 followed by matching with `IMGT High V-QUEST`
++ **`gff_file`:** custom-built GTF file describing where individual segments
+are located along the length of the *CAR* transcript
 
 ```{r load_data, echo=TRUE}
 load("data/sample_metrics_data.RData")
@@ -254,9 +273,19 @@ plot_coverage <- function(formatted_cov_dat, gtf_dat,
 }
 ```
 
+\  
+
 ## Results
 
 ### Visualizing *CAR* coverage & abundance
+
+The plots below show read coverage from `RapMap` mapping across the length of
+the *CAR* sequence. Segments in the transcript, corresponding to the gene parts
+used to build the construct, are depicted by colored boxes in each plot.
+Transparency (i.e., alpha) is scaled based on the estimated abundance of the
+*CAR* transcript (TPM) as measured by `Salmon`.
+
+\  
 
 #### Bulk libraries from project P89
 
@@ -270,6 +299,8 @@ bulk_cov_dat <- bulk_lib_dat %>%
 plot_coverage(bulk_cov_dat, car_dat)
 ```
 
+\  
+
 #### Single-cell libraries from project P89
 
 ```{r prep_p89_c1_cov_dat}
@@ -280,6 +311,8 @@ p89_c1_cov_dat <- sc_lib_dat %>%
 ```{r plot_p89_c1_cov, fig.height=6}
 plot_coverage(p89_c1_cov_dat, car_dat)
 ```
+
+\  
 
 #### Single-cell libraries from project P85
 
@@ -292,17 +325,23 @@ p85_c1_cov_dat <- p85_lib_dat %>%
 plot_coverage(p85_c1_cov_dat, car_dat)
 ```
 
+\  
+
 ### Inspecting trends in *CAR* coverage among single-cell P89 libs
+
+To simplify the plots (and make it easier to distinguish between libraries),
+I'll just plot the fitted line of coverage for each library.
 
 ```{r p89_cov_fits, fig.height=6}
 p89_c1_cov_dat %>% 
     plot_coverage(car_dat, fits_only = TRUE)
 ```
 
-#### Separating by QC outcome
+\  
 
-+ `median_cv_coverage` < 1
-+ `mapped_reads_w_dups` > 0.7
+#### *CAR* coverage vs. QC pass/fail
+
+> **pass:** `median_cv_coverage` < 1 **AND** `mapped_reads_w_dups` > 0.7
 
 ```{r p89_cov_qc, fig.height=3}
 p89_c1_cov_dat %>% 
@@ -313,7 +352,11 @@ p89_c1_cov_dat %>%
     facet_wrap(~ pass_qual)
 ```
 
-#### Separating by presence of functional TCR junction
+\  
+
+#### *CAR* coverage vs. presence of functional TCR junction
+
+> **junction:** functional TRA **OR** TRB junction sequence detected
 
 ```{r p89_cov_jxn, fig.height=3}
 p89_c1_cov_dat %>% 
@@ -323,7 +366,11 @@ p89_c1_cov_dat %>%
     facet_wrap(~ has_jxn)
 ```
 
-#### Separating by presence of TCR (paired junction)
+\  
+
+#### *CAR* coverage vs. presence of TCR (paired junction)
+
+> **TCR:** paired TRA **AND** TRB for the same library
 
 ```{r p89_cov_tcr, fig.height=3}
 p89_c1_cov_dat %>% 
@@ -333,7 +380,25 @@ p89_c1_cov_dat %>%
     facet_wrap(~ has_tcr)
 ```
 
+\  
+
 ### Inspecting abundance of non-*CAR* transcripts
+
+```{r format_xcript_table}
+xcript_id_table <- xcript_dat %>% 
+    filter(seqnames != "CAR-1") %>% 
+    select(xcript_name = gene_id, segment_version = transcript_id)
+```
+
+The following human transcripts (which overlap the *CAR* sequence) were 
+quantified by `Salmon`.
+
+`r kable(xcript_id_table)`
+
+\  
+
+Each plot shows *CAR* coverage across libraries, but colored based on the 
+estimated abundance of the respective transcript.
 
 ```{r p89_all_segments_quant, fig.height=12, cache=TRUE}
 gene_list <-c("CAR", 
@@ -351,11 +416,18 @@ plot_grid(plotlist = p_list, ncol = 3, nrow = 5,
           labels = unlist(gene_list), hjust = 0)
 ```
 
+\  
+ 
 ### Attempting to define *CAR* detection rules
 
-#### Separating by *CAR* expression
+I tried to come up with a relatively simple way to classify whether *CAR* was
+detected in a particular library.
 
-log2(TPM +1) > 0 for CAR transcript
+\  
+
+#### Binarized *CAR* expression
+
+> **expressed:** log2(TPM +1) $\gt$ 0 for *CAR* transcript
 
 ```{r p89_cov_car, fig.height=6}
 car_expr_dat_tpm <- p89_c1_cov_dat %>% 
@@ -370,16 +442,19 @@ car_expr_dat_tpm %>%
     plot_coverage(car_dat, fits_only = TRUE, split = FALSE) +
     facet_grid(car_expr_tpm ~ nz_cov)
 
-car_expr_dat_tpm %>% 
+tally_tpm <- car_expr_dat_tpm %>% 
     group_by(car_expr_tpm, nz_cov) %>% 
-    summarise(n_distinct(lib_id))
+    summarise(n_libs = n_distinct(lib_id))
 ```
 
+`r kable(tally_tpm)`
+
+\  
 
 #### Quantification-based rule
 
-log2(TPM + 1) >= 2.5 in any of CAR or EGFRt transcripts OR
-log2(TPM + 1) > 2 in all CAR or EGFRt transcripts
+> **expressed:** log2(TPM + 1) $\geq$ 2.5 in *CAR* or *EGFRt* transcripts **OR**
+> log2(TPM + 1) $\gt$ 2 in all *CAR* or *EGFRt* transcripts
 
 ```{r p89_cov_quant_rule, fig.height=6}
 quant_indicator_dat <- salmon_quant_dat %>% 
@@ -406,15 +481,20 @@ car_expr_dat_quant %>%
     plot_coverage(car_dat, fits_only = TRUE, split = FALSE) +
     facet_grid(car_expr_quant ~ nz_cov)
 
-car_expr_dat_quant %>% 
+tally_quant <- car_expr_dat_quant %>% 
     group_by(car_expr_quant, nz_cov) %>% 
-    summarise(n_distinct(lib_id))
+    summarise(n_libs = n_distinct(lib_id))
 ```
 
 
+`r kable(tally_quant)`
+
+\  
+
 #### Coverage-based rule
 
->= 10 positions with > 0 reads in ANY of *CD19scFv*, *T2A*, or *EGFRt*
+> **expressed:** $\geq$ 10 positions with $\gt$ 0 reads 
+> in **ANY** of *CD19scFv*, *T2A*, or *EGFRt*
 
 ```{r p89_cov_cov_rule, fig.height=6}
 cov_indicator_dat <- p89_c1_cov_dat %>% 
@@ -438,13 +518,22 @@ car_expr_dat_cov %>%
     plot_coverage(car_dat, fits_only = TRUE, split = FALSE) +
     facet_grid(car_expr_cov ~ nz_cov)
 
-car_expr_dat_cov %>%  
+tally_cov <- car_expr_dat_cov %>%  
     group_by(car_expr_cov, nz_cov) %>% 
-    summarise(n_distinct(lib_id))
+    summarise(n_libs = n_distinct(lib_id))
 ```
 
+`r kable(tally_cov)`
 
-### Revisiting splits
+\  
+
+### Revisiting trends
+
+Plotting the remaining 53 libraries with *CAR* detected based on **coverage**.
+
+\  
+
+#### Timepoint vs. donor
 
 ```{r p89_cov_filtered}
 car_expr_dat_cov %>% 
@@ -453,9 +542,9 @@ car_expr_dat_cov %>%
     plot_coverage(car_dat, fits_only = TRUE, split = TRUE)
 ```
 
+\  
 
-
-#### Separating by presence of functional TCR junction
+#### Functional junction detection vs. *CAR* detection
 
 ```{r p89_cov_filtered_jxn, fig.height=3}
 car_expr_dat_cov %>% 
@@ -466,7 +555,9 @@ car_expr_dat_cov %>%
     facet_grid(car_expr_cov ~ has_jxn)
 ```
 
-#### Separating by presence of TCR (paired junction)
+\  
+
+#### Paired TCR junction detection vs. *CAR* detection
 
 ```{r p89_cov_filtered_tcr, fig.height=3}
 car_expr_dat_cov %>% 
@@ -477,3 +568,10 @@ car_expr_dat_cov %>%
     facet_grid(car_expr_cov ~ has_tcr)
 ```
 
+\  
+
+## Session info
+
+```{r session_info}
+sessionInfo()
+```
