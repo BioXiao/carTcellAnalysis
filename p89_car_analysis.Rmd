@@ -5,16 +5,16 @@ date: "March 30, 2016"
 output: pdf_document
 ---
 
-```{r global_opts, echo=FALSE}
+```{r global_opts, echo=FALSE, cache=FALSE}
 knitr::opts_chunk$set(fig.width=9, fig.align='center',
-                      echo=FALSE, warning=FALSE, message=FALSE)
+                      echo=FALSE, warning=FALSE, message=FALSE, cache=TRUE)
 
 ## numbers >= 10^5 will be denoted in scientific notation,
 ## and rounded to 2 digits
 options(scipen = 1, digits = 2)
 ```
 
-```{r load_packages}
+```{r load_packages, cache=FALSE}
 library(knitr)
 library(stringr)
 library(tidyr)
@@ -31,48 +31,33 @@ myCbPal[c(1, 3, 6)] <- myCbPal[c(6, 1, 3)]
 myCbPal[3] <- "#666666"
 ```
 
-## Overview
+## Summary
 
-I compared **coverage profiles** and **estimated abundances** for *CAR* and
-related transcripts using three sets of samples:
+I compared **coverage profiles** and **estimated abundances** for *CAR* and related transcripts using three sets of samples:
 
-+ **P89 bulk:** sorted CD8+ T-cells, sequenced as bulk populations (expected
-to express *CAR*)
-+ **P89 single-cell:** CD8+ T-cells, captured using **C1** instrument and
-sequenced invididually (expected to express *CAR*)
-+ **P85 single-cell:** MAIT-cells, captured using **C1** and sequenced
-individually (not expected to express *CAR*)
++ **P89 bulk:** sorted CD8+ T-cells, sequenced as bulk populations (expected to express *CAR*)
++ **P89 single-cell:** CD8+ T-cells, captured using **C1** instrument and sequenced invididually (expected to express *CAR*)
++ **P85 single-cell:** MAIT-cells, captured using **C1** and sequenced individually (not expected to express *CAR*)
 
-\  
+Based on read coverage across the *CAR* transcript, the construct appears to be (i) expressed in bulk samples from P89; (ii) not expressed in single-cell samples from P85; (iii) expressed in a small fraction of single-cell samples from P89.
 
-## Pipeline description
+## Pipeline overview
 
 The *CAR* detection pipeline utilizes two tools: [`Salmon`](https://github.com/COMBINE-lab/salmon) and [`RapMap`](https://github.com/COMBINE-lab/RapMap). Both use the concept of "lightweight" / "quasi-" / "pseudo" alignment to rapidly map RNA-seq reads to the transcriptome. `Salmon` is primarily geared towards transcript *quantification*, using a probabilistic algorithm to estimate abundance (i.e., counts or TPM) for each reference transcript. `RapMap` provides a stand-alone version of the quasi-mapper used under the hood by `Salmon`. The output of `RapMap` is a SAM-like record of aligned reads, which enables further inspection of transcript coverage. These tools were chosen because they're extremely fast &mdash; ~2-5 minutes to map/quantify an RNA-seq library with ~5-10 million reads &mdash; allowing for rapid prototyping and testing.
 
 For each library, reads are mapped to a modified human reference transcriptome, including all annotated transcripts from the hg38 gene model GTF **plus** the *CAR* transcript sequence.
 
-
-
-\  
-
-## Getting the data
+## Data used for analysis
 
 Data presented below was generated and/or compiled from several sources:
 
-+ **`sample_metrics_data`:**  sample annotation (e.g., donor ID, timepoint, 
-etc.) as well sequencing & alignment metrics from RNA-seq processing  
-+ **`sample_rapmap_data`:** read coverage measured across the length of the
-*CAR* transcript, based on mapping with the `RapMap` tool
-+ **`sample_salmon_data`:** abundance estimates (e.g., TPM, count) produced
-by the `Salmon` tool for *CAR* and several relevant transcripts when mapping to
-a modified human reference transcriptome (hg38)
-+ **`salmon_imgt_data`:** predicted/identified TCR junction sequences and
-alleles in single-cell libraries, as produced by assembly with `Trinity` 
-followed by matching with `IMGT High V-QUEST`
-+ **`gff_file`:** custom-built GTF file describing where individual segments
-are located along the length of the *CAR* transcript
++ **`sample_metrics_data`:**  sample annotation (e.g., donor ID, timepoint, etc.) as well sequencing & alignment metrics from RNA-seq processing 
++ **`sample_rapmap_data`:** read coverage measured across the length of the *CAR* transcript, based on mapping with the `RapMap` tool
++ **`sample_salmon_data`:** abundance estimates (e.g., TPM, count) produced by the `Salmon` tool for *CAR* and several relevant transcripts when mapping to a modified human reference transcriptome (hg38)
++ **`salmon_imgt_data`:** predicted/identified TCR junction sequences and alleles in single-cell libraries, as produced by assembly with `Trinity` followed by matching with `IMGT High V-QUEST`
++ **`gff_file`:** custom-built GTF file describing where individual segments are located along the length of the *CAR* transcript
 
-```{r load_data, echo=TRUE}
+```{r load_data}
 load("data/sample_metrics_data.RData")
 load("data/sample_rapmap_data.RData")
 load("data/sample_salmon_data.RData")
@@ -109,7 +94,6 @@ cov_dat <- cov_dat %>%
     left_join(lib_cov, by = c("pos" = "pos")) %>% 
     filter(segment != "character(0)")
 ```
-
 
 ```{r data_clean_fxns}
 # clean up duplicated headers
@@ -283,21 +267,15 @@ plot_coverage <- function(formatted_cov_dat, gtf_dat,
 }
 ```
 
-\  
-
 ## Results
 
 ### Visualizing *CAR* coverage & abundance
 
-The plots below show read coverage from `RapMap` mapping across the length of
-the *CAR* sequence. Segments in the transcript, corresponding to the gene parts
-used to build the construct, are depicted by colored boxes in each plot.
-Transparency (i.e., alpha) is scaled based on the estimated abundance of the
-*CAR* transcript (TPM) as measured by `Salmon`.
-
-\  
+The plots below show read coverage from `RapMap` mapping across the length of the *CAR* sequence. Segments in the transcript, corresponding to the gene parts used to build the construct, are depicted by colored boxes in each plot. Transparency (i.e., alpha) is scaled based on the estimated abundance of the *CAR* transcript (TPM) as measured by `Salmon`.
 
 #### Bulk libraries from project P89
+
+While expressed at what would be considered low levels, the *CAR* transcript appears to be present in all donors at all timepoints. Note that for all but the **x194~IP** timepoint (2 replicates), each plot shows data from a single library.
 
 ```{r prep_bulk_cov_dat}
 bulk_cov_dat <- bulk_lib_dat %>% 
@@ -305,49 +283,50 @@ bulk_cov_dat <- bulk_lib_dat %>%
     filter(donor_id %in% c("x145", "x194", "x228"))
 ```
 
-```{r plot_bulk_cov, fig.height=6}
+```{r plot_bulk_cov, fig.height=4.5}
 plot_coverage(bulk_cov_dat, car_dat)
 ```
 
-\  
-
 #### Single-cell libraries from project P89
+
+In contrast, some single-cell libraries clearly show signs of *CAR* expression, but most do not. Each plot in this case shows data from all cells from a given donor/timepoint combination. The orange fit line depicts the average across all cells. The table below shows the breakdown of libraries (cells) per group.
 
 ```{r prep_p89_c1_cov_dat}
 p89_c1_cov_dat <- sc_lib_dat %>% 
     prep_cov_dat(sc_metric_dat)
 ```
 
-```{r plot_p89_c1_cov, fig.height=6}
+`r kable(p89_c1_cov_dat %>% group_by(donor_id, timepoint) %>% summarise(num_libs = n_distinct(lib_id)))`
+
+```{r plot_p89_c1_cov, fig.height=4.5}
 plot_coverage(p89_c1_cov_dat, car_dat)
 ```
 
-\  
-
 #### Single-cell libraries from project P85
+
+As expected for the negative control, the MAIT cells from P85 show virtually no evidence of *CAR* expression.
 
 ```{r prep_p85_c1_cov_dat}
 p85_c1_cov_dat <- p85_lib_dat %>% 
     prep_cov_dat(p85_metric_dat)
 ```
 
-```{r plot_p85_c1_cov, fig.height=4}
+`r kable(p89_c1_cov_dat %>% group_by(donor_id, timepoint) %>% summarise(num_libs = n_distinct(lib_id)))`
+
+```{r plot_p85_c1_cov, fig.height=3}
 plot_coverage(p85_c1_cov_dat, car_dat)
 ```
 
-\  
-
 ### Inspecting trends in *CAR* coverage among single-cell P89 libs
 
-To simplify the plots (and make it easier to distinguish between libraries),
-I'll just plot the fitted line of coverage for each library.
+To simplify the plots (and make it easier to distinguish between libraries), below I've just shown the fit line of coverage for each library.
 
-```{r p89_cov_fits, fig.height=6}
+```{r p89_cov_fits, fig.height=4.5}
 p89_c1_cov_dat %>% 
     plot_coverage(car_dat, fits_only = TRUE)
 ```
 
-\  
+<!-- leaving these plots out for now
 
 #### *CAR* coverage vs. QC pass/fail
 
@@ -362,8 +341,6 @@ p89_c1_cov_dat %>%
     facet_wrap(~ pass_qual)
 ```
 
-\  
-
 #### *CAR* coverage vs. presence of functional TCR junction
 
 > **junction:** functional TRA **OR** TRB junction sequence detected
@@ -375,8 +352,6 @@ p89_c1_cov_dat %>%
     plot_coverage(car_dat, fits_only = TRUE, split = FALSE) +
     facet_wrap(~ has_jxn)
 ```
-
-\  
 
 #### *CAR* coverage vs. presence of TCR (paired junction)
 
@@ -390,7 +365,7 @@ p89_c1_cov_dat %>%
     facet_wrap(~ has_tcr)
 ```
 
-\  
+-->
 
 ### Inspecting abundance of non-*CAR* transcripts
 
@@ -400,17 +375,13 @@ xcript_id_table <- xcript_dat %>%
     select(xcript_name = gene_id, segment_version = transcript_id)
 ```
 
-The following human transcripts (which overlap the *CAR* sequence) were 
-quantified by `Salmon`.
+The following human transcripts (which overlap the *CAR* sequence) were quantified by `Salmon`.
 
 `r kable(xcript_id_table)`
 
-\  
+Each plot shows *CAR* coverage across libraries, but colored based on the estimated abundance of the respective transcript.
 
-Each plot shows *CAR* coverage across libraries, but colored based on the 
-estimated abundance of the respective transcript.
-
-```{r p89_all_segments_quant, fig.height=12, cache=TRUE}
+```{r p89_all_segments_quant, fig.height=9, cache=TRUE}
 gene_list <-c("CAR", 
       xcript_dat$transcript_id %>% intersect(names(p89_c1_cov_dat))) %>% 
     as.list()
@@ -426,18 +397,15 @@ plot_grid(plotlist = p_list, ncol = 3, nrow = 5,
           labels = unlist(gene_list), hjust = 0)
 ```
 
-\  
- 
 ### Attempting to define *CAR* detection rules
 
-I tried to come up with a relatively simple way to classify whether *CAR* was
-detected in a particular library.
+I tried to come up with a relatively simple way to classify whether *CAR* was detected in a particular library.
 
-\  
+<!-- leaving these plots out for now
 
 #### Binarized *CAR* expression
 
-> **expressed:** log2(TPM +1) $\gt$ 0 for *CAR* transcript
+> **expressed:** log2(TPM +1) > 0 for *CAR* transcript
 
 ```{r p89_cov_car, fig.height=6}
 car_expr_dat_tpm <- p89_c1_cov_dat %>% 
@@ -459,12 +427,10 @@ tally_tpm <- car_expr_dat_tpm %>%
 
 `r kable(tally_tpm)`
 
-\  
-
 #### Quantification-based rule
 
 > **expressed:** log2(TPM + 1) $\geq$ 2.5 in *CAR* or *EGFRt* transcripts **OR**
-> log2(TPM + 1) $\gt$ 2 in all *CAR* or *EGFRt* transcripts
+> log2(TPM + 1) > 2 in all *CAR* or *EGFRt* transcripts
 
 ```{r p89_cov_quant_rule, fig.height=6}
 quant_indicator_dat <- salmon_quant_dat %>% 
@@ -496,17 +462,16 @@ tally_quant <- car_expr_dat_quant %>%
     summarise(n_libs = n_distinct(lib_id))
 ```
 
-
 `r kable(tally_quant)`
 
-\  
+-->
 
 #### Coverage-based rule
 
-> **expressed:** $\geq$ 10 positions with $\gt$ 0 reads 
+> **expressed:** $\geq$ 10 positions with > 0 reads 
 > in **ANY** of *CD19scFv*, *T2A*, or *EGFRt*
 
-```{r p89_cov_cov_rule, fig.height=6}
+```{r p89_cov_cov_rule, fig.height=3}
 cov_indicator_dat <- p89_c1_cov_dat %>% 
     group_by(lib_id, segment) %>% 
     filter(segment %in% c("CD19scFv", "T2A", "EGFRt")) %>% 
@@ -535,24 +500,18 @@ tally_cov <- car_expr_dat_cov %>%
 
 `r kable(tally_cov)`
 
-\  
-
 ### Revisiting trends
 
 Plotting the remaining 53 libraries with *CAR* detected based on **coverage**.
 
-\  
-
 #### Timepoint vs. donor
 
-```{r p89_cov_filtered}
+```{r p89_cov_filtered, fig.height=4.5}
 car_expr_dat_cov %>% 
     filter(!is.na(nz_cov),
            car_expr_cov == "car_expr_cov") %>% 
     plot_coverage(car_dat, fits_only = TRUE, split = TRUE)
 ```
-
-\  
 
 #### Functional junction detection vs. *CAR* detection
 
@@ -565,7 +524,7 @@ car_expr_dat_cov %>%
     facet_grid(car_expr_cov ~ has_jxn)
 ```
 
-\  
+<!-- leaving this plot out for now
 
 #### Paired TCR junction detection vs. *CAR* detection
 
@@ -578,8 +537,7 @@ car_expr_dat_cov %>%
     facet_grid(car_expr_cov ~ has_tcr)
 ```
 
-\  
-
+-->
 
 ## Methods
 
@@ -655,7 +613,7 @@ tools/SalmonBeta-0.5.0_OSX-10.10/bin/salmon index # salmon executable & index mo
     -k 19
 ```
 
-\    
+  
 
 ### Mapping & quantification
 
