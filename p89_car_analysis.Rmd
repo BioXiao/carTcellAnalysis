@@ -2,7 +2,7 @@
 title: "P89 RNA-seq CAR transcript analysis"
 author: "James Eddy"
 date: "March 30, 2016"
-output: html_document
+output: pdf_document
 ---
 
 ```{r global_opts, echo=FALSE}
@@ -42,6 +42,16 @@ to express *CAR*)
 sequenced invididually (expected to express *CAR*)
 + **P85 single-cell:** MAIT-cells, captured using **C1** and sequenced
 individually (not expected to express *CAR*)
+
+\  
+
+## Pipeline description
+
+The *CAR* detection pipeline utilizes two tools: [`Salmon`](https://github.com/COMBINE-lab/salmon) and [`RapMap`](https://github.com/COMBINE-lab/RapMap). Both use the concept of "lightweight" / "quasi-" / "pseudo" alignment to rapidly map RNA-seq reads to the transcriptome. `Salmon` is primarily geared towards transcript *quantification*, using a probabilistic algorithm to estimate abundance (i.e., counts or TPM) for each reference transcript. `RapMap` provides a stand-alone version of the quasi-mapper used under the hood by `Salmon`. The output of `RapMap` is a SAM-like record of aligned reads, which enables further inspection of transcript coverage. These tools were chosen because they're extremely fast &mdash; ~2-5 minutes to map/quantify an RNA-seq library with ~5-10 million reads &mdash; allowing for rapid prototyping and testing.
+
+For each library, reads are mapped to a modified human reference transcriptome, including all annotated transcripts from the hg38 gene model GTF **plus** the *CAR* transcript sequence.
+
+
 
 \  
 
@@ -569,6 +579,94 @@ car_expr_dat_cov %>%
 ```
 
 \  
+
+
+## Methods
+
+### Data preprocessing
+
+Prior to any computation with `Salmon` and `RapMap`, several steps were needed to prepare reference data and indexes:
+
+#### Formatting/building reference transcriptome
+
+To convert the *CAR* sequence information from lines in a Word document to something more usable (in this case, FASTA), I wrote a script to do most of the work for me. Writing the script took a bit of extra time, but it was useful for minimizing human error and replicated effort.
+
+```
+python scripts/format_fasta.py \
+	data/sequence/carGeneRaw.txt \ # unformatted sequences, copied from Word doc into text file
+	CAR \ # name of gene/transcript
+	data/sequence/carTranscript.fasta \ # output FASTA file
+	True \ # merge individual segments into a single FASTA record
+	True # output is transcript (don't add artificial 'intron' buffer between segments)
+```
+
+To convert transcript records in the hg38 gene model GTF to the required FASTA format, I used the `gffread` function included with `cufflinks`.
+
+```
+gffread \
+	-w data/sequence/hg38_transcripts.fa \ # output transcriptome FASTA
+	-g genome.fa \ # reference genome (hg38) from iGenomes
+	genes.gtf # reference gene models for hg38 from iGenomes
+```
+
+Finally, I simply pasted the *CAR* sequence to the top of the hg38 transcriptome FASTA.
+
+```
+cat data/sequence/carTranscript.fasta data/sequence/hg38_transcripts.fa > hg38_CAR_transcripts.fa
+```
+
+#### Formatting/building reference gene model GTF
+
+For the purposes of visualization and some filtering tasks, I created a pseudo-GTF file with a record for each segment of the *CAR* transcript. Each segment (e.g., "CD28tm") is labeled as a unique 'transcript', and the chromosome is denoted as *CAR-1*. The start and end position of each segment is also included. I was able to use the `format_fasta.py` script for this, keeping the default option to not merge segments.
+
+```
+python scripts/format_fasta.py \
+	data/sequence/carGeneRaw.txt \ # unformatted sequences, copied from Word document into text file
+	CAR \ # name of gene/transcript
+	data/sequence/carGeneParts.fasta \ # output FASTA file
+```
+
+Using a bit of digging and manual editing, I also added entries for each transcript in the reference human transcriptome that might overlap with *CAR* segments. In this case, the transcript ID (e.g., "NM\_001243077") is used as the chromosome name, the "common" gene name (e.g., "CD28") is used as the gene ID, and the corresponding *CAR* segment along with a tag indicating record number, if multiple isoforms exist for the gene (e.g., "CD28tm\_r1").
+
+```
+python scripts/gene_fasta_to_gtf.py \
+	data/sequence/carGeneParts.fasta \
+	CAR \
+	data/annotation/carGeneParts.gtf
+```
+
+#### Building indexes
+
+The commands for building indexes with `RapMap` and `Salmon`. Note: `docker` was used to run `RapMap`, as the tool is not currently available for Mac OS.
+
+```
+docker run --rm -v ${PWD}/data:/home/data jaeddy/rapmap:0.1.0-pre \ # loading docker image
+	rapmap quasiindex \ # command to use rapmap executable & quasiindex module
+    -t data/sequence/hg38_CAR_transcripts.fa \ # input reference transcriptome
+    -i data/indexes/rapmap/hg38_CAR \ # index folder/prefix
+    -k 19 #
+```
+
+```
+tools/SalmonBeta-0.5.0_OSX-10.10/bin/salmon index # salmon executable & index module \
+    -t data/sequence/hg38_CAR_transcripts.fa \
+    -i data/indexes/salmon/hg38_CAR \
+    --type quasi \
+    -k 19
+```
+
+\    
+
+### Mapping & quantification
+
+Both index building and actual mapping/quantification are included in the script `car_detect_pipe.sh`, which runs the pipeline an all library FASTQ files specified in a tab-delimited input list. The `bash` code is a bit messy, so I won't include it here, but the `RapMap` step proceeds as follows:
+
+1. Map reads to reference transcriptome, save output SAM file
+2. Convert SAM to BAM, sort, and index with `samtools`
+3. Filter BAM records to only include reads mapping to *CAR* or relevant endogeneous transcripts (using `samtools`)
+4. Index again with `samtools`)
+
+For the `Salmon` step, outputs are saved as-is.
 
 ## Session info
 
