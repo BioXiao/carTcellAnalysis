@@ -22,7 +22,7 @@ def build_fasta_list(fastaRecords, gene, fastaList=[]):
     spacer = 1 # use 5 for gapped reference
     for idx,record in enumerate(fastaRecords):
         recordStart = totalLength + spacer + 1
-        recordStop = totalLength + len(record) + spacer
+        recordStop = totalLength + len(record) - spacer
         # fastaList.append(('\t').join([gene + '-1', 'custom', 'exon',
         #                               str(recordStart), str(recordStop),
         #                               '.', '+', '.',
@@ -45,7 +45,8 @@ def build_fasta_list(fastaRecords, gene, fastaList=[]):
                                           ('gene_id "%s"; '
                                            'transcript_id "%s";\n') %
                                            (gene, record.name)]))
-        totalLength += len(record) + (spacer * 2)
+        totalLength += len(record)
+
     # fastaList.append(('\t').join([gene + '-1', 'custom', 'transcript',
     #                                   str(1), str(totalLength),
     #                                   '.', '+', '.',
