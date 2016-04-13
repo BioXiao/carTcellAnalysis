@@ -1,25 +1,17 @@
 library(GenomicRanges)
 library(rtracklayer)
 library(GenomicAlignments)
+library(Biostrings)
 library(ggplot2)
+library(stringr)
 library(dplyr)
 # library(ggbio)
 
-gff_file <- "~/Box Sync/data/projects/carTcellAnalysis/annotation/carPlus.gtf"
-car_gtf <- import.gff3(gff_file)
+# gff_file <- "~/Box Sync/data/projects/carTcellAnalysis/annotation/carPlus.gtf"
+# car_gtf <- import.gff3(gff_file)
 
-get_coverage_df <- function(bam_file, seq_name) {
-    lib_id <- str_extract(bam_file, "lib[0-9]+")
-    
-    gal <- readGAlignments(bam_file)
-    cov <- coverage(gal)
-    
-    seq_cov <- cov[[seq_name]]
-    seq_len <- length(seq_cov)
-    cov_df <- data_frame(pos = 1:seq_len,
-                         cov = as.vector(window(seq_cov, 1, seq_len)))
-    return(cov_df)
-}
+gff_file <- "data/annotation/carPlusRef.gtf"
+xcripts_gtf <- import.gff2(gff_file)
 
 get_coverage <- function(aln, gtf, seq, meta = NULL, smooth = 0, min.coverage = 0) {
 
@@ -73,14 +65,97 @@ plot_coverage <- function(cov_df, xlims) {
         theme_bw()
 }
 
-# collect & store coverage data for all samples
-bam_files <- list.files("~/Box Sync/data/projects/carTcellAnalysis/results/rapmap/",
+### Collect & store coverage data for all samples ###
+
+bam_files <- list.files("data/results/rapmap/",
                         full.names = TRUE, recursive = TRUE) %>% 
     .[str_detect(., ".bam$")]
 
-cov_df <- build_coverage_df(as.list(bam_files), car_gtf, "CAR-1", 10)
+# ...for CAR transcript
+car_gtf <- xcripts_gtf %>% 
+    subset(., elementMetadata(.)$gene_id == "CAR")
+car_cov_dat <- build_coverage_df(as.list(bam_files), car_gtf, "CAR-1", 10)
+
+egfr_xcripts <- xcripts_gtf %>% 
+    elementMetadata() %>% 
+    as.data.frame() %>% 
+    filter(str_detect(transcript_id, "EGFRt_")) %>% 
+    .$transcript_id
+
+# ...for EGFR transcripts
+# (note: this is really slow - should consider using mclapply)
+egfr_cov_dat <- lapply(as.list(egfr_xcripts), function(x) {
+    egfr_gtf <- xcripts_gtf %>% 
+        subset(., elementMetadata(.)$transcript_id == x)
+    seqname <- seqnames(egfr_gtf) %>% 
+        as.character()
+    
+    xcript_cov_dat <- build_coverage_df(as.list(bam_files), egfr_gtf, 
+                                        seqname, 10) %>% 
+        mutate(egfr_xcript = x)
+}) %>% 
+    bind_rows()
+
+
+### Format CAR GTF data ###
+xcript_dat <- as.data.frame(xcripts_gtf)
+
+car_dat <- xcript_dat %>% 
+    filter(seqnames == "CAR-1") %>% 
+    mutate(segment = factor(transcript_id, levels = transcript_id))
+
+
+### Build EGFRt GTF-like dataframe indicating transmembrane region ###
+
+# read in reference transcript FASTA
+seqs <- readDNAStringSet("data/sequence/hg38_CAR_transcripts.fa")
+
+# extract sequences of transcripts in 'xcripts_gtf'
+chr_names <- xcripts_gtf %>% 
+    seqnames() %>% 
+    as.list() %>% 
+    unique()
+
+xcript_matches <- lapply(chr_names, function(x) {
+    which(str_detect(names(seqs), x))
+}) %>% as.numeric()
+
+xcript_seqs <- seqs[xcript_matches]
+
+# identify start & end positions for EGFRt segment
+egfrt_region <- car_gtf %>% 
+    subset(., elementMetadata(.)$transcript_id == "EGFRt") %>% 
+    ranges()
+
+# extract EGFRt subsequence
+egfrt_subseq <- subseq(xcript_seqs[1], 
+                       start = egfrt_region@start - 1,
+                       width = egfrt_region@width + 2)
+
+# find and store overlapping regions in reference EGFR sequences
+egfrt_dat <- lapply(as.list(9:13), function(x) {
+    seq_match <- pairwiseAlignment(egfrt_subseq[[1]], xcript_seqs[[x]], 
+                                   type = "local")
+    match_start <- seq_match %>% 
+        subject() %>% 
+        start()
+    match_end <- seq_match %>% 
+        subject() %>% 
+        width() + match_start - 1
+    
+    egfrt_match <- data_frame(seqnames = chr_names[[x]],
+                              start = match_start,
+                              end = match_end,
+                              segment = "transmembrane")
+}) %>% 
+    bind_rows() %>% 
+    left_join(xcripts_gtf %>% 
+                  as.data.frame() %>% 
+                  select(seqnames, transcript_id)) %>% 
+    mutate(segment = factor(segment, levels = segment))
+
+
 
 # save image
-cov_dat <- cov_df
-save(cov_dat, file = "data/sample_rapmap_data.RData")
+save(car_cov_dat, egfr_cov_dat, car_dat, egfrt_dat, file = "data/sample_rapmap_data.RData")
 
