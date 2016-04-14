@@ -7,7 +7,8 @@ output: pdf_document
 
 ```{r global_opts, echo=FALSE, cache=FALSE}
 knitr::opts_chunk$set(fig.width=9, fig.align='center',
-                      echo=FALSE, warning=FALSE, message=FALSE, cache=TRUE)
+                      echo=FALSE, warning=FALSE, message=FALSE, cache=TRUE,
+                      dev="png", dpi=120)
 
 ## numbers >= 10^5 will be denoted in scientific notation,
 ## and rounded to 2 digits
