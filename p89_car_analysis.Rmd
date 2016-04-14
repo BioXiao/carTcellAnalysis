@@ -2,7 +2,7 @@
 title: "P89 RNA-seq CAR transcript analysis"
 author: "James Eddy"
 date: "March 30, 2016"
-output: pdf_document
+output: pdf_document 
 ---
 
 ```{r global_opts, echo=FALSE, cache=FALSE}
@@ -63,16 +63,15 @@ load("data/sample_rapmap_data.RData")
 load("data/sample_salmon_data.RData")
 load("data/sample_tcr_data.RData")
 
-gff_file <- "data/annotation/carPlus.gtf"
+gff_file <- "data/annotation/carPlusRef.gtf"
 xcripts_gtf <- import.gff2(gff_file)
-```
+xcript_dat <- as.data.frame(xcripts_gtf) %>% 
+    filter(seqnames != "NR_047551") # removing because non-coding RNA
 
-```{r prep_gtf_dat}
-xcript_dat <- as.data.frame(xcripts_gtf)
-
-car_dat <- xcript_dat %>% 
-    filter(seqnames == "CAR-1") %>% 
-    mutate(segment = factor(transcript_id, levels = transcript_id))
+# quick fix for egfrt_dat
+egfrt_dat <- egfrt_dat %>% 
+    dplyr::rename(egfr_xcript = transcript_id) %>% 
+    filter(seqnames != "NR_047551") # removing because non-coding RNA
 ```
 
 ```{r format_cov_dat}
@@ -85,12 +84,12 @@ get_segment <- Vectorize(function(pos) {
         as.character()
 })
 
-lib_cov <- cov_dat %>% 
-    filter(lib_id == cov_dat$lib_id[1]) %>% 
+lib_cov <- car_cov_dat %>% 
+    filter(lib_id == car_cov_dat$lib_id[1]) %>% 
     mutate(segment = get_segment(pos)) %>% 
     select(pos, segment)
 
-cov_dat <- cov_dat %>% 
+car_cov_dat <- car_cov_dat %>% 
     left_join(lib_cov, by = c("pos" = "pos")) %>% 
     filter(segment != "character(0)")
 ```
@@ -148,7 +147,7 @@ relabel_transcripts <- function(df, xcript_dat) {
 ```
 
 ```{r data_prep_fxn}
-prep_cov_dat <- function(lib_dat, metric_dat) {
+prep_cov_dat <- function(lib_dat, cov_dat, metric_dat) {
     lib_dat %>% 
         clean_dup_names() %>% 
         simplify_lib_id() %>%
@@ -273,13 +272,13 @@ plot_coverage <- function(formatted_cov_dat, gtf_dat,
 
 The plots below show read coverage from `RapMap` mapping across the length of the *CAR* sequence. Segments in the transcript, corresponding to the gene parts used to build the construct, are depicted by colored boxes in each plot. Transparency (i.e., alpha) is scaled based on the estimated abundance of the *CAR* transcript (TPM) as measured by `Salmon`.
 
-#### Bulk libraries from project P89
+#### Bulk libraries from project P89:
 
 While expressed at what would be considered low levels, the *CAR* transcript appears to be present in all donors at all timepoints. Note that for all but the **x194~IP** timepoint (2 replicates), each plot shows data from a single library.
 
 ```{r prep_bulk_cov_dat}
 bulk_cov_dat <- bulk_lib_dat %>% 
-    prep_cov_dat(bulk_metric_dat) %>% 
+    prep_cov_dat(car_cov_dat, bulk_metric_dat) %>% 
     filter(donor_id %in% c("x145", "x194", "x228"))
 ```
 
@@ -287,39 +286,41 @@ bulk_cov_dat <- bulk_lib_dat %>%
 plot_coverage(bulk_cov_dat, car_dat)
 ```
 
-#### Single-cell libraries from project P89
+#### Single-cell libraries from project P89:
 
-In contrast, some single-cell libraries clearly show signs of *CAR* expression, but most do not. Each plot in this case shows data from all cells from a given donor/timepoint combination. The orange fit line depicts the average across all cells. The table below shows the breakdown of libraries (cells) per group.
+In contrast, some single-cell libraries clearly show signs of *CAR* expression, but most do not. Each plot in this case shows data from all cells from a given donor/timepoint combination. The orange fit line depicts the average across all cells. 
 
 ```{r prep_p89_c1_cov_dat}
 p89_c1_cov_dat <- sc_lib_dat %>% 
-    prep_cov_dat(sc_metric_dat)
+    prep_cov_dat(car_cov_dat, sc_metric_dat)
 ```
-
-`r kable(p89_c1_cov_dat %>% group_by(donor_id, timepoint) %>% summarise(num_libs = n_distinct(lib_id)))`
 
 ```{r plot_p89_c1_cov, fig.height=4.5}
 plot_coverage(p89_c1_cov_dat, car_dat)
 ```
 
-#### Single-cell libraries from project P85
+The table below shows the breakdown of libraries (cells) per group:
+`r kable(p89_c1_cov_dat %>% group_by(donor_id, timepoint) %>% summarise(num_libs = n_distinct(lib_id)))`
+
+#### Single-cell libraries from project P85:
 
 As expected for the negative control, the MAIT cells from P85 show virtually no evidence of *CAR* expression.
 
 ```{r prep_p85_c1_cov_dat}
 p85_c1_cov_dat <- p85_lib_dat %>% 
-    prep_cov_dat(p85_metric_dat)
+    prep_cov_dat(car_cov_dat, p85_metric_dat)
 ```
-
-`r kable(p89_c1_cov_dat %>% group_by(donor_id, timepoint) %>% summarise(num_libs = n_distinct(lib_id)))`
 
 ```{r plot_p85_c1_cov, fig.height=3}
 plot_coverage(p85_c1_cov_dat, car_dat)
 ```
 
+Here's the breakdown of libraries per group for P85:
+`r kable(p89_c1_cov_dat %>% group_by(donor_id, timepoint) %>% summarise(num_libs = n_distinct(lib_id)))`
+
 ### Inspecting trends in *CAR* coverage among single-cell P89 libs
 
-To simplify the plots (and make it easier to distinguish between libraries), below I've just shown the fit line of coverage for each library.
+To simplify the plots (and make it easier to distinguish between libraries), below I've just shown the fit line of coverage for each library. Notably, these plots also show more clearly that, in many of the libraries with apparent *CAR* expression, the bulk of the signal appears to fall within the *EGFRt* region. I'll return to this point below.
 
 ```{r p89_cov_fits, fig.height=4.5}
 p89_c1_cov_dat %>% 
@@ -367,7 +368,7 @@ p89_c1_cov_dat %>%
 
 -->
 
-### Inspecting abundance of non-*CAR* transcripts
+#### Correlation with abundance of non-*CAR* transcripts:
 
 ```{r format_xcript_table}
 xcript_id_table <- xcript_dat %>% 
@@ -375,15 +376,15 @@ xcript_id_table <- xcript_dat %>%
     select(xcript_name = gene_id, segment_version = transcript_id)
 ```
 
-The following human transcripts (which overlap the *CAR* sequence) were quantified by `Salmon`.
-
+The following human transcripts (which overlap the *CAR* sequence) were quantified by `Salmon`. The `xcript_name` (e.g., "CD28") corresponds to the "common" gene name for a particular *CAR* segment; `segment_version` includes a tag indicating record number, if multiple isoforms exist for the gene (e.g., "CD28tm\_r1") in the reference transcriptome.
 `r kable(xcript_id_table)`
 
-Each plot shows *CAR* coverage across libraries, but colored based on the estimated abundance of the respective transcript.
+Each plot shows *CAR* coverage across libraries, but colored based on the estimated abundance of the respective transcript. In other words, a "brighter" fit line in the plot for *EGFRt_r4* indicates higher expression of that transcript in a library, even though the lines themselves still represent *CAR* transcript coverage.
 
-```{r p89_all_segments_quant, fig.height=9, cache=TRUE}
+```{r p89_all_segments_quant, fig.height=6, cache=TRUE}
 gene_list <-c("CAR", 
-      xcript_dat$transcript_id %>% intersect(names(p89_c1_cov_dat))) %>% 
+      xcript_dat$transcript_id %>% 
+          intersect(names(p89_c1_cov_dat))) %>% 
     as.list()
 p_list <- lapply(gene_list, function(x) {
     p <- p89_c1_cov_dat %>% 
@@ -393,9 +394,34 @@ p_list <- lapply(gene_list, function(x) {
                       fade_by = sprintf("log2(%s + 1)", x))
     return(p)
 })
-plot_grid(plotlist = p_list, ncol = 3, nrow = 5, 
+plot_grid(plotlist = p_list, ncol = 3, nrow = 4, 
           labels = unlist(gene_list), hjust = 0)
 ```
+
+#### Estimated abundance of *EGFR* & *CAR* expression:
+
+Once again, higher estimated expression of some *EGFR* transcripts (particularly *EGFRt_r2* and *EGFRt_r4*) appears to correspond to stronger evidence of *CAR* expression. I took a closer look at this by identifying the subsequence of each transcript that overlaps with the *EGFRt* segment of the *CAR* gene, then plotting the coverage from `RapMap` for each transcript. The region matching *EGFRt* is highlighted in the purple box (i.e., "transmembrane").
+
+```{r prep_p89_c1_egfr_cov_dat}
+p89_c1_egfr_cov_dat <- sc_lib_dat %>% 
+    prep_cov_dat(egfr_cov_dat %>% 
+                     filter(egfr_xcript != "EGFRt_r5"), # remove non-coding RNA
+                 sc_metric_dat)
+```
+
+```{r p89_egfr_cov_fits, fig.height=4}
+p89_c1_egfr_cov_dat %>% 
+    filter(!is.na(egfr_xcript)) %>% 
+    plot_coverage(egfrt_dat, fits_only = FALSE, split = FALSE) +
+    facet_wrap(~ egfr_xcript, scales = "free_x")
+```
+
+It's pretty clear that the vast majority of reads mapping to any of the *EGFR* transcripts fall within the transmembrane region. There are other subsequences with some coverage outside of the transmembrane region, but these are fairly short and may overlap with other transcripts in hg38.
+
+As for **why** reads from the *CAR* transcript are mostly mapping to the *EGFRt* segment, there are at least a couple possible explanations:
+
+1. Because the *CAR* transcript is fairly long, degradation from both the 5' and 3' ends could lead to less coverage on either end of the transcript;
+2. Libraries prepared using the Nextera XT kit (or more specifically, using the Clontech SMARTer cDNA synthesis kit for C1) show a fair amount of 3' bias, which could further (or primarily) contribute to the skew observed along the *CAR* transcript.
 
 ### Attempting to define *CAR* detection rules
 
@@ -441,8 +467,8 @@ quant_indicator_dat <- salmon_quant_dat %>%
     mutate_each(funs(log2(. + 1)), -lib_id) %>% 
     rowwise() %>% 
     mutate(car_expr_quant = ifelse(
-        max(CAR, EGFRt_r1, EGFRt_r2, EGFRt_r3, EGFRt_r4, EGFRt_r5) >= 2.5 
-        | min(CAR, EGFRt_r1, EGFRt_r2, EGFRt_r3, EGFRt_r4, EGFRt_r5) > 1,
+        max(CAR, EGFRt_r1, EGFRt_r2, EGFRt_r3, EGFRt_r4) >= 2.5 
+        | min(CAR, EGFRt_r1, EGFRt_r2, EGFRt_r3, EGFRt_r4) > 1,
         "car_expr_quant", "no_car_quant"))
 
 car_expr_dat_quant <- p89_c1_cov_dat %>% 
