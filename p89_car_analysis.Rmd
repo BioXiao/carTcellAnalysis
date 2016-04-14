@@ -39,7 +39,10 @@ I compared **coverage profiles** and **estimated abundances** for *CAR* and rela
 + **P89 single-cell:** CD8+ T-cells, captured using **C1** instrument and sequenced invididually (expected to express *CAR*)
 + **P85 single-cell:** MAIT-cells, captured using **C1** and sequenced individually (not expected to express *CAR*)
 
-Based on read coverage across the *CAR* transcript, the construct appears to be (i) expressed in bulk samples from P89; (ii) not expressed in single-cell samples from P85; (iii) expressed in a small fraction of single-cell samples from P89.
+Based on read coverage across the *CAR* transcript, the construct appears to be (i) expressed in bulk samples from P89; (ii) not expressed in single-cell samples from P85; (iii) expressed in a fraction of single-cell samples from P89.
+
+All code used for the pipeline and subsequent analysis (including this `Rmarkdown` report) is available at this repo:
+[https://github.com/jaeddy/carTcellAnalysis](https://github.com/jaeddy/carTcellAnalysis)
 
 ## Pipeline overview
 
@@ -52,7 +55,7 @@ For each library, reads are mapped to a modified human reference transcriptome, 
 Data presented below was generated and/or compiled from several sources:
 
 + **`sample_metrics_data`:**  sample annotation (e.g., donor ID, timepoint, etc.) as well sequencing & alignment metrics from RNA-seq processing 
-+ **`sample_rapmap_data`:** read coverage measured across the length of the *CAR* transcript, based on mapping with the `RapMap` tool
++ **`sample_rapmap_data`:** read coverage measured across the length of the *CAR* transcript and several *EGFR* transcript isoforms, based on mapping with the `RapMap` tool
 + **`sample_salmon_data`:** abundance estimates (e.g., TPM, count) produced by the `Salmon` tool for *CAR* and several relevant transcripts when mapping to a modified human reference transcriptome (hg38)
 + **`salmon_imgt_data`:** predicted/identified TCR junction sequences and alleles in single-cell libraries, as produced by assembly with `Trinity` followed by matching with `IMGT High V-QUEST`
 + **`gff_file`:** custom-built GTF file describing where individual segments are located along the length of the *CAR* transcript
@@ -286,6 +289,8 @@ bulk_cov_dat <- bulk_lib_dat %>%
 plot_coverage(bulk_cov_dat, car_dat)
 ```
 
+\pagebreak
+
 #### Single-cell libraries from project P89:
 
 In contrast, some single-cell libraries clearly show signs of *CAR* expression, but most do not. Each plot in this case shows data from all cells from a given donor/timepoint combination. The orange fit line depicts the average across all cells. 
@@ -302,6 +307,8 @@ plot_coverage(p89_c1_cov_dat, car_dat)
 The table below shows the breakdown of libraries (cells) per group:
 `r kable(p89_c1_cov_dat %>% group_by(donor_id, timepoint) %>% summarise(num_libs = n_distinct(lib_id)))`
 
+\pagebreak
+
 #### Single-cell libraries from project P85:
 
 As expected for the negative control, the MAIT cells from P85 show virtually no evidence of *CAR* expression.
@@ -317,6 +324,8 @@ plot_coverage(p85_c1_cov_dat, car_dat)
 
 Here's the breakdown of libraries per group for P85:
 `r kable(p89_c1_cov_dat %>% group_by(donor_id, timepoint) %>% summarise(num_libs = n_distinct(lib_id)))`
+
+\pagebreak
 
 ### Inspecting trends in *CAR* coverage among single-cell P89 libs
 
@@ -423,27 +432,31 @@ As for **why** reads from the *CAR* transcript are mostly mapping to the *EGFRt*
 1. Because the *CAR* transcript is fairly long, degradation from both the 5' and 3' ends could lead to less coverage on either end of the transcript;
 2. Libraries prepared using the Nextera XT kit (or more specifically, using the Clontech SMARTer cDNA synthesis kit for C1) show a fair amount of 3' bias, which could further (or primarily) contribute to the skew observed along the *CAR* transcript.
 
-### Attempting to define *CAR* detection rules
+### "Classifying" *CAR* detection in single-cell libraries
 
-I tried to come up with a relatively simple way to classify whether *CAR* was detected in a particular library.
+Based on the above observations, I tried to come up with a relatively simple way to classify whether *CAR* was detected in a particular library. In all cases, I set an absolute threshold for detection, based on whether a library had the bare minimum number of reads mapping to any position along the transcript. That is,
 
-<!-- leaving these plots out for now
+> non-zero coverage = TRUE if $\geq$ 5 positions with at least one read OR $\geq$ 1 position with at least two reads
 
-#### Binarized *CAR* expression
+Cases where a *CAR* detection rule and the non-zero coverage rule both return `FALSE` are considered to be "true negatives", giving some measure of specificity. When *CAR* is detected in libraries **without** non-zero coverage, this suggests a false positive.
 
-> **expressed:** log2(TPM +1) > 0 for *CAR* transcript
+\pagebreak
 
-```{r p89_cov_car, fig.height=6}
+#### Binarized *CAR* expression:
+
+Using the most straightforward criteria &mdash; positive expression of the *CAR* transcript (i.e., log2(TPM + 1) > 0 for *CAR*, as estimated by `Salmon`) &mdash; I appeared to miss a number of libraries that showed coverage of *EGFRt* or one of the non-human *CAR* segments (i.e., *CD19scFv*, *T2A*). 
+
+```{r p89_cov_car, fig.height=4}
 car_expr_dat_tpm <- p89_c1_cov_dat %>% 
     mutate(car_expr_tpm = ifelse(log2(CAR + 1) > 0, 
                                  "car_expr_tpm", "no_car_tpm")) %>%
     group_by(lib_id) %>% 
-    mutate(nz_cov = max(cov) >= 2) %>% 
+    mutate(nz_cov = sum(cov > 0) >= 5 | max(cov) >= 2) %>%
     ungroup()
-
+    
 car_expr_dat_tpm %>% 
     filter(!is.na(nz_cov)) %>% 
-    plot_coverage(car_dat, fits_only = TRUE, split = FALSE) +
+    plot_coverage(car_dat, fits_only = FALSE, split = FALSE) +
     facet_grid(car_expr_tpm ~ nz_cov)
 
 tally_tpm <- car_expr_dat_tpm %>% 
@@ -451,9 +464,15 @@ tally_tpm <- car_expr_dat_tpm %>%
     summarise(n_libs = n_distinct(lib_id))
 ```
 
+While there are no false positives in this case, and the specificity (true negative rate) appears solid, I would consider at least some of the libraries in the bottom right panel to be false negatives.
+
 `r kable(tally_tpm)`
 
-#### Quantification-based rule
+#### Quantification-based rule:
+
+I tried to devise a more complicated rule based on the abundance of both the *CAR* transcript and each of the *EGFR* transcript isoforms (not shown). However, this lead to greater numbers of apparent false positives and false negatives, so I dropped this idea.
+
+<!-- leaving out this plot for now
 
 > **expressed:** log2(TPM + 1) $\geq$ 2.5 in *CAR* or *EGFRt* transcripts **OR**
 > log2(TPM + 1) > 2 in all *CAR* or *EGFRt* transcripts
@@ -475,12 +494,12 @@ car_expr_dat_quant <- p89_c1_cov_dat %>%
     left_join(quant_indicator_dat %>% 
                   select(lib_id, car_expr_quant)) %>% 
     group_by(lib_id) %>% 
-    mutate(nz_cov = max(cov) >= 2) %>% 
+    mutate(nz_cov = sum(cov > 0) >= 5 | max(cov) >= 2) %>% 
     ungroup()
 
 car_expr_dat_quant %>% 
     filter(!is.na(nz_cov)) %>% 
-    plot_coverage(car_dat, fits_only = TRUE, split = FALSE) +
+    plot_coverage(car_dat, fits_only = FALSE, split = FALSE) +
     facet_grid(car_expr_quant ~ nz_cov)
 
 tally_quant <- car_expr_dat_quant %>% 
@@ -492,31 +511,35 @@ tally_quant <- car_expr_dat_quant %>%
 
 -->
 
-#### Coverage-based rule
+\pagebreak
 
-> **expressed:** $\geq$ 10 positions with > 0 reads 
-> in **ANY** of *CD19scFv*, *T2A*, or *EGFRt*
+#### Coverage-based rule:
 
-```{r p89_cov_cov_rule, fig.height=3}
+Finally, putting together various pieces of information, I settled on a rule that checked for $\geq$ 2 *contiguous* (adjacent) positions with positive coverage in **ANY** of the segments *CD19scFV*, *T2A*, or *EGFRt*.
+
+```{r p89_cov_cov_rule, fig.height=4}
+cov_min <- 0
 cov_indicator_dat <- p89_c1_cov_dat %>% 
-    group_by(lib_id, segment) %>% 
+    mutate(contiguous = (cov > cov_min & lag(cov) > cov_min) | 
+               (cov > cov_min & lead(cov_min) > cov_min)) %>% 
     filter(segment %in% c("CD19scFv", "T2A", "EGFRt")) %>% 
-    summarise(hits = sum(cov > 0)) %>% 
+    group_by(lib_id, segment) %>% 
+    summarise(hits = sum(contiguous, na.rm = TRUE)) %>% 
     ungroup() %>% 
     group_by(lib_id) %>% 
-    summarise(car_expr_cov = ifelse(any(hits >= 10),
+    summarise(car_expr_cov = ifelse(any(hits > 1),
                                     "car_expr_cov", "no_car_cov"))
 
 car_expr_dat_cov <- p89_c1_cov_dat %>% 
     left_join(cov_indicator_dat %>% 
                   select(lib_id, car_expr_cov)) %>% 
     group_by(lib_id) %>% 
-    mutate(nz_cov = max(cov) >= 2) %>% 
+    mutate(nz_cov = sum(cov > 0) >= 5 | max(cov) >= 2) %>% 
     ungroup()
 
 car_expr_dat_cov %>% 
     filter(!is.na(nz_cov)) %>% 
-    plot_coverage(car_dat, fits_only = TRUE, split = FALSE) +
+    plot_coverage(car_dat, fits_only = FALSE, split = FALSE) +
     facet_grid(car_expr_cov ~ nz_cov)
 
 tally_cov <- car_expr_dat_cov %>%  
@@ -524,24 +547,34 @@ tally_cov <- car_expr_dat_cov %>%
     summarise(n_libs = n_distinct(lib_id))
 ```
 
+Based on coverage of these *CAR* "indicator" segments and the criteria of non-zero coverage across the *CAR* transcript, I would label 138 of the 559 single-cell libraries in P89 as "positive" for presence of the CAR transcript. Note: the pipeline produced an error for the `RapMap` step for 5 of the libraries, so I don't currently have coverage data for these; I'll need to go back and re-run this step.
+
 `r kable(tally_cov)`
 
-### Revisiting trends
+\pagebreak
 
-Plotting the remaining 53 libraries with *CAR* detected based on **coverage**.
+### Revisiting *CAR* transcript trends across patients
 
-#### Timepoint vs. donor
+With a more informed designation of *CAR* detection, below are plots of the remaining 138 libraries. Note that I haven't tried to control for library size in any way, so relative *abundances* (i.e., height on the y-axis) between libraries shouldn't be taken too seriously.
 
 ```{r p89_cov_filtered, fig.height=4.5}
 car_expr_dat_cov %>% 
     filter(!is.na(nz_cov),
            car_expr_cov == "car_expr_cov") %>% 
     plot_coverage(car_dat, fits_only = TRUE, split = TRUE)
+
+tally_all <- car_expr_dat_cov %>% 
+    filter(!is.na(nz_cov),
+           car_expr_cov == "car_expr_cov") %>% 
+    group_by(donor_id, timepoint) %>% 
+    summarise(n_libs = n_distinct(lib_id))
 ```
 
-#### Functional junction detection vs. *CAR* detection
+`r kable(tally_all)`
 
-```{r p89_cov_filtered_jxn, fig.height=3}
+As an additional check, I compared the overlap of libraries with detected *CAR* transcript and those for which we were able to identify either a functional *TRAV* or *TRBV* TCR junction. Not surprisingly, some libraries for which a TCR junction was identified did not appear to show evidence of *CAR* expression. On the other hand, TCR junctions were not recovered for several libraries with reasonably clear evidence of *CAR* coverage, suggesting that the junctions may have been missed due to limitation with sequencing parameters, transcriptome assembly tools, or junction identification tools.
+
+```{r p89_cov_filtered_jxn, fig.height=4}
 car_expr_dat_cov %>% 
     filter(!is.na(nz_cov)) %>% 
     mutate(has_jxn = ifelse(tra_pos | trb_pos, 
@@ -565,7 +598,22 @@ car_expr_dat_cov %>%
 
 -->
 
-## Methods
+## Thoughts / next steps
+
+1. I still don't have a great idea for how to *quantify* abundance of the *CAR* transcript in a particular library. I might be able to construct a reference transcript containing only the non-human segments and *EGFRt*, then map reads to **only** this transcript. On an absolute scale, I would expect the abundance estimates to be biased, but they might provide a reasonable indication of relative expression between libraries.
+
+2. Beyond TCR junction detection, I haven't looked at correlation between *CAR* detection and any other features or phenotypes (including TCR clonotype). If there are any that seem like they might be especially interesting, that's something I could explore.
+
+3. As far as key take-away points here, I would probably focus on 5 figures (we can discuss how to present those points in the most succinct way): 
+    i. *CAR* coverage in bulk P89 libraries;
+    ii. *CAR* coverage in all single-cell P89 libraries;
+    iii. *CAR* coverage in all single-cell P85 libraries;
+    iv. *EGFR* coverage in single-cell P89 libraries;
+    v. *CAR* coverage in those single-cell P89 libraries designated as *CAR*-positive
+
+\pagebreak
+
+## Detailed methods
 
 ### Data preprocessing
 
@@ -638,9 +686,6 @@ tools/SalmonBeta-0.5.0_OSX-10.10/bin/salmon index # salmon executable & index mo
     --type quasi \
     -k 19
 ```
-
-  
-
 ### Mapping & quantification
 
 Both index building and actual mapping/quantification are included in the script `car_detect_pipe.sh`, which runs the pipeline an all library FASTQ files specified in a tab-delimited input list. The `bash` code is a bit messy, so I won't include it here, but the `RapMap` step proceeds as follows:
@@ -651,6 +696,12 @@ Both index building and actual mapping/quantification are included in the script
 4. Index again with `samtools`)
 
 For the `Salmon` step, outputs are saved as-is.
+
+### Compiling & formatting outputs
+
+I used several R scripts to read, parse, and format the outputs from `RapMap` and `Salmon`. In the interest of time, I haven't described what those scripts do here, but I can add that later.
+
+\pagebreak
 
 ## Session info
 
