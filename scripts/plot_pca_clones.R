@@ -1,20 +1,23 @@
-lib_list <- readRDS("data/libs_NHL_after_filter.rds")
-resids <- readRDS("data/zlm_resid.rds")
 
-load("data/sample_metrics_data.RData")
-load("data/sample_tcr_data.RData")
-
-
+# load libs ---------------------------------------------------------------
 library(dplyr)
 library(ggplot2)
 library(stringr)
+library(tidyr)
 library(scales)
 library(ggthemes)
 library(viridis)
 
-myCbPal <- colorblind_pal()(8)
-myCbPal[c(1, 3, 6)] <- myCbPal[c(6, 1, 3)]
-myCbPal[3] <- "#666666"
+# load data ---------------------------------------------------------------
+resids <- readRDS("data/zlm_resid_labeled.rds")
+annotation <- readRDS("data/annotation.rds")
+
+load("data/sample_metrics_data.RData")
+load("data/sample_tcr_data.RData")
+
+cb_pal <- colorblind_pal()(8)
+
+# define functions --------------------------------------------------------
 
 # clean up duplicated headers
 clean_dup_names <- function(df) {
@@ -52,93 +55,58 @@ relabel_timepoints <- function(df) {
         mutate(timepoint = str_replace(timepoint, "Day(26|28|29|33)", "t2"))
 }
 
-# Compute principal components
+# format data -------------------------------------------------------------
+
+# compute principal components
 pca <- prcomp(t(resids))
 
-# Plot first two PCs and color by group
-ggbiplot(pca, choices = c(1,2), var.axes = FALSE) + , groups = groupDat$group) +
-    scale_color_colorblind() +
-    guides(size = FALSE) +
-    theme_classic() +
-    theme(axis.title = element_text(size = 11))
-
 pc_dat <- as.data.frame(pca$x) %>% 
-    mutate(lib_id = lib_list) %>% 
+    add_rownames(var = "wellKey") %>% 
+    left_join(annotation %>% 
+                  select(lib_id = libID, wellKey), .) %>% 
+    select(-wellKey) %>% 
     inner_join(sc_lib_dat %>% 
                    clean_dup_names() %>% 
                    simplify_lib_id() %>%
                    clean_donor_ids() %>% 
                    select(lib_id, donor_id, timepoint) %>% 
-                   relabel_timepoints(), .)
-
-head(pc_dat)[, 1:5] %>% 
-    mutate(timepoint = str_replace(timepoint, " ", "")) %>% 
-    mutate(timepoint = str_replace(timepoint, "InfusionProduct", "IP"))
-
-pc_dat %>% 
-    ggplot(aes(x = PC1, y = PC2)) +
-    geom_point() +
-    geom_density_2d() +
-    facet_grid(donor_id ~ timepoint)
-
-
-construct_tcrs <- function(jxns_df, any = FALSE) {
+                   relabel_timepoints() %>% 
+                   left_join(jxn_dat), .) %>% 
+    replace_na(list(TRAV = "null", TRBV = "null", clone_id = "null"))
     
-    trav_df <- jxns_df %>% 
-        filter(str_detect(v_gene, "TRAV")) %>% 
-        select(-j_gene) %>% 
-        dplyr::rename(trav_gene = v_gene, 
-                      trav_jxn = junction)
-    
-    trbv_df <- jxns_df %>% 
-        filter(str_detect(v_gene, "TRBV")) %>% 
-        select(-j_gene) %>% 
-        dplyr::rename(trbv_gene = v_gene,
-                      trbv_jxn = junction)
-    
-    if (!any) {
-        tcr_df <- inner_join(trav_df, trbv_df, by = "lib_id")
-    } else {
-        tcr_df <- full_join(trav_df, trbv_df, by = "lib_id") %>% 
-            mutate(trav_gene = ifelse(is.na(trav_gene), "no_trav_gene", trav_gene),
-                   trbv_gene = ifelse(is.na(trbv_gene), "no_trbv_gene", trbv_gene),
-                   trav_jxn = ifelse(is.na(trav_jxn), "no_trav_jxn", trav_jxn),
-                   trbv_jxn = ifelse(is.na(trbv_jxn), "no_trbv_jxn", trbv_jxn))
-    }
-    return(tcr_df)
-}
 
-tcr_dat <- jxns %>% 
-    construct_tcrs(any = TRUE) %>% 
-    mutate(tcr_str = str_c(trav_gene, trbv_gene, sep = ":"))
+# prep data for plotting --------------------------------------------------
 
+# check for clones detected at multiple timepoints
 pc_dat <- pc_dat %>% 
-    left_join(tcr_dat %>% 
-                  select(lib_id, trav_gene, trbv_gene, tcr_str))
-
-
-
+    group_by(donor_id, clone_id) %>% 
+    dplyr::mutate(num_timepoints = n_distinct(timepoint)) %>% 
+    ungroup() %>% 
+    mutate(jxn_detected = clone_id != "null",
+           num_timepoints = ifelse(jxn_detected, num_timepoints, 0)) %>% 
+    mutate(num_timepoints = factor(num_timepoints))
 
 # make plot ---------------------------------------------------------------
-
-color_by <- "trav_gene"
-fill_by <- "trbv_gene"
-num_colors <- n_distinct(pc_dat[[color_by]]) - 1
-# cc <- colorRampPalette(c(myCbPal[1], myCbPal[2], myCbPal[4]))(num_colors)
-color_pal <- c("#000000", colorRampPalette(myCbPal)(num_colors))
-# color_pal <- viridis_pal()(num_colors)
-
-num_fills <- n_distinct(pc_dat[[fill_by]]) - 1
-fill_pal <- c("#000000", colorRampPalette(myCbPal)(num_fills))
-# fill_pal <- viridis_pal()(num_colors)
+n_colors <- n_distinct(pc_dat$clone_id)
+clone_cb_pal <- colorRampPalette(cb_pal)(n_colors)
 
 pc_dat %>% 
-#     filter(trav_gene != "no_trav_gene",
-#            trbv_gene != "no_trbv_gene") %>% 
     ggplot(aes(x = PC1, y = PC2)) +
-    geom_point(aes_string(colour = color_by, fill = fill_by), 
-               shape = 21, size = 4, alpha = 0.8) +
-    # geom_density_2d() +
-    scale_color_manual(values = color_pal) +
-    scale_fill_manual(values = fill_pal) +
-    facet_grid(donor_id ~ timepoint)
+    geom_point(aes(fill = clone_id, alpha = jxn_detected, 
+                   size = num_timepoints, shape = num_timepoints)) +
+    facet_grid(donor_id ~ timepoint) +
+    scale_fill_manual(values = clone_cb_pal) +
+    scale_alpha_manual(values = c(0.2, 0.8)) +
+    scale_shape_manual(values = c(21, 24, 22, 23)) +
+    scale_size_manual(values = c(2, 2, 4, 6)) +
+    guides(fill = FALSE, size = FALSE) +
+    theme_bw() +
+    theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank())
+
+
+# get clones w/ multiple timepoints ---------------------------------------
+clone_summary <- pc_dat %>% 
+    filter(num_timepoints %in% c(2,3)) %>% 
+    select(lib_id, donor_id, timepoint, clone_id, num_timepoints)
+
