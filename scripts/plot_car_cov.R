@@ -8,6 +8,7 @@ library(tidyr)
 library(rtracklayer)
 library(ggthemes)
 library(viridis)
+library(cowplot)
 
 
 # load data ---------------------------------------------------------------
@@ -65,6 +66,12 @@ plot_coverage <- function(formatted_cov_dat, gtf_dat,
                lib_num = as.character(lib_num)) %>% 
         ungroup()
     
+    # add even/odd indicators for label positioning
+#     gtf_dat <- gtf_dat %>% 
+#         mutate(seg_adjust = ifelse(row_number() %% 2, 0, -0.2),
+#                seg_adjust = ifelse(row_number() %% 3, seg_adjust, -0.4))
+#     print(gtf_dat)
+#     
     # determine plot height
     height <- log2(max(formatted_cov_dat$cov, na.rm = TRUE) + 1)
     
@@ -74,6 +81,10 @@ plot_coverage <- function(formatted_cov_dat, gtf_dat,
                   aes(xmin = start, xmax = end, ymin = 0, ymax = height, 
                       fill = segment),
                   alpha = 0.5, colour = "white")
+#         geom_label(data = gtf_dat,
+#                   aes(x = start, y = height + seg_adjust, label = segment),
+#                   hjust = "inward", vjust = "inward", size = 3,
+#                   fill = "white")
     if (!fits_only) {
         p_cov <- p_cov +
             geom_point(data = formatted_cov_dat, 
@@ -126,6 +137,7 @@ plot_coverage <- function(formatted_cov_dat, gtf_dat,
         theme_bw() +
         scale_x_continuous(expand = c(0.01, 0)) +
         scale_y_continuous(expand = c(0.01, 0), limits = c(0, height)) +
+        theme(legend.position = "top")
 
     if (split) {
         p_cov <- p_cov +
@@ -165,9 +177,17 @@ p85_c1_cov_dat <- p85_lib_dat %>%
     prep_cov_dat(car_cov_dat, p85_metric_dat)
 
 
-# create plot 1 -----------------------------------------------------------
+# create combined plots ---------------------------------------------------
 
-# plot_coverage(bulk_cov_dat, car_dat, color_by = "log2(CAR + 1)", 
-#               all_fits = TRUE, fits_only = FALSE, split = FALSE)
+bulk_cov_dat %>% 
+    mutate(samples = "CAR T-cells (bulk)") %>% 
+    bind_rows(p89_c1_cov_dat %>% 
+                  mutate(samples = "CAR T-cells (single)")) %>% 
+    bind_rows(p85_c1_cov_dat %>% 
+                  mutate(samples = "MAI T-cells (single)")) %>% 
+    plot_coverage(car_dat, color_by = "log2(CAR + 1)",
+                  all_fits = FALSE, fits_only = FALSE, split = FALSE) +
+    facet_grid( ~ samples)
 
-
+# plot_grid(p1, p2, p3, ncol = 3, nrow = 1, 
+#           hjust = 0)
