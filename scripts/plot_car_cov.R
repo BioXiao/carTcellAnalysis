@@ -73,33 +73,41 @@ plot_coverage <- function(formatted_cov_dat, gtf_dat,
         geom_rect(data = gtf_dat, 
                   aes(xmin = start, xmax = end, ymin = 0, ymax = height, 
                       fill = segment),
-                  alpha = 0.4, colour = "white")
+                  alpha = 0.5, colour = "white")
     if (!fits_only) {
         p_cov <- p_cov +
             geom_point(data = formatted_cov_dat, 
                        aes_string(x = "pos", y = "log2(cov + 1)"),
-                       stroke = 0.5, shape = 21, size = 2, alpha = 0.5, 
-                       fill = "slategray", colour = "slategray")
+                       stroke = 0.5, size = 2.5, alpha = 0.7, 
+                       colour = "slategray")
     }
     if (all_fits) {
         p_cov <- p_cov +
-            geom_line(data = formatted_cov_dat,
-                      aes_string(x = "pos", y = "log2(cov + 1)", 
-                                 group = "lib_id", colour = color_by),
-                      stat = "smooth", method = "gam", formula = y ~ s(x), span = 0.5,
-                      se = FALSE, size = 1.5)
+#             geom_line(data = formatted_cov_dat,
+#                       aes_string(x = "pos", y = "log2(cov + 1)", 
+#                                  group = "lib_id", colour = color_by),
+#                       stat = "smooth", method = "gam", formula = y ~ s(x),
+#                       size = 1.5)
+            geom_smooth(data = formatted_cov_dat,
+                        aes_string(x = "pos", y = "log2(cov + 1)",
+                                   group = "lib_id", colour = color_by),
+                        method = "gam", formula = y ~ s(x), se = FALSE,
+                        size = 1.5)
     } else {
         p_cov <- p_cov +
-            geom_line(data = formatted_cov_dat,
-                      aes(x = pos, y = log2(cov + 1)),
-                      stat = "smooth", method = "gam", formula = y ~ s(x), span = 0.5,
-                      size = 4, alpha = 0.5,
-                      colour = "slategray") +
-            geom_line(data = formatted_cov_dat,
-                      aes(x = pos, y = log2(cov + 1)),
-                      stat = "smooth", method = "gam", formula = y ~ s(x), span = 0.5,
-                      size = 2, alpha = 1,
-                      colour = viridis_pal()(12)[11])
+#             geom_line(data = formatted_cov_dat,
+#                       aes(x = pos, y = log2(cov + 1)),
+#                       stat = "smooth", method = "gam", formula = y ~ s(x), span = 0.5,
+#                       size = 4, alpha = 0.5,
+#                       colour = "slategray") +
+#             geom_line(data = formatted_cov_dat,
+#                       aes(x = pos, y = log2(cov + 1)),
+#                       stat = "smooth", method = "gam", formula = y ~ s(x),
+#                       size = 2, alpha = 1,
+#                       colour = viridis_pal()(12)[11]) +
+            geom_smooth(data = formatted_cov_dat,
+                        aes(x = pos, y = log2(cov + 1)),
+                        size = 2, colour = viridis_pal()(12)[11])
     }
 
 
@@ -109,7 +117,7 @@ plot_coverage <- function(formatted_cov_dat, gtf_dat,
             guides(colour = FALSE)        
     } else {
         p_cov <- p_cov +
-            scale_color_viridis(begin = 0, end = 1)
+            scale_color_viridis(begin = 0, end = 1, option = "B")
             # scale_color_gradient(low = v_pal[1], high = v_pal[3])
     }
     
@@ -131,8 +139,8 @@ plot_coverage <- function(formatted_cov_dat, gtf_dat,
     return(p_cov)
 }
 
-plot_coverage(p89_c1_cov_dat, car_dat, color_by = "log2(CAR + 1)", 
-              all_fits = TRUE, fits_only = FALSE, split = FALSE)
+plot_coverage(bulk_cov_dat, car_dat, color_by = "log2(CAR + 1)", 
+              all_fits = FALSE, fits_only = FALSE, split = FALSE)
 
 # format reference data ----------------------------------------------------
 xcript_dat <- as.data.frame(xcripts_gtf) %>% 
@@ -159,7 +167,7 @@ p85_c1_cov_dat <- p85_lib_dat %>%
 
 # create plot 1 -----------------------------------------------------------
 
-plot_coverage(bulk_cov_dat, car_dat, color_by = "log2(CAR + 1)", 
-              all_fits = TRUE, fits_only = FALSE, split = FALSE)
+# plot_coverage(bulk_cov_dat, car_dat, color_by = "log2(CAR + 1)", 
+#               all_fits = TRUE, fits_only = FALSE, split = FALSE)
 
 
