@@ -52,11 +52,9 @@ prep_cov_dat <- function(lib_dat, cov_dat, metric_dat) {
 
 # crazy function to build plots
 plot_coverage <- function(formatted_cov_dat, gtf_dat, 
-                          split = TRUE, fits_only = FALSE, all_fits = FALSE,
-                          color_by = "lib_num", fade_by = "log2(CAR + 1)",
-                          hide_legend = FALSE) {
+                          fits_only = FALSE, all_fits = FALSE,
+                          color_by = "lib_num") {
     
-    cb_pal <- colorblind_pal()(8)
     v_pal <- viridis_pal()(8)
     
     # add lib numbers for coloring
@@ -66,12 +64,6 @@ plot_coverage <- function(formatted_cov_dat, gtf_dat,
                lib_num = as.character(lib_num)) %>% 
         ungroup()
     
-    # add even/odd indicators for label positioning
-#     gtf_dat <- gtf_dat %>% 
-#         mutate(seg_adjust = ifelse(row_number() %% 2, 0, -0.2),
-#                seg_adjust = ifelse(row_number() %% 3, seg_adjust, -0.4))
-#     print(gtf_dat)
-#     
     # determine plot height
     height <- log2(max(formatted_cov_dat$cov, na.rm = TRUE) + 1)
     
@@ -81,24 +73,15 @@ plot_coverage <- function(formatted_cov_dat, gtf_dat,
                   aes(xmin = start, xmax = end, ymin = 0, ymax = height, 
                       fill = segment),
                   alpha = 0.5, colour = "white")
-#         geom_label(data = gtf_dat,
-#                   aes(x = start, y = height + seg_adjust, label = segment),
-#                   hjust = "inward", vjust = "inward", size = 3,
-#                   fill = "white")
     if (!fits_only) {
         p_cov <- p_cov +
             geom_point(data = formatted_cov_dat, 
                        aes_string(x = "pos", y = "log2(cov + 1)"),
-                       stroke = 0.5, size = 2.5, alpha = 0.7, 
+                       stroke = 0.5, size = 2, alpha = 0.7, 
                        colour = "slategray")
     }
     if (all_fits) {
         p_cov <- p_cov +
-#             geom_line(data = formatted_cov_dat,
-#                       aes_string(x = "pos", y = "log2(cov + 1)", 
-#                                  group = "lib_id", colour = color_by),
-#                       stat = "smooth", method = "gam", formula = y ~ s(x),
-#                       size = 1.5)
             geom_smooth(data = formatted_cov_dat,
                         aes_string(x = "pos", y = "log2(cov + 1)",
                                    group = "lib_id", colour = color_by),
@@ -106,53 +89,22 @@ plot_coverage <- function(formatted_cov_dat, gtf_dat,
                         size = 1.5)
     } else {
         p_cov <- p_cov +
-#             geom_line(data = formatted_cov_dat,
-#                       aes(x = pos, y = log2(cov + 1)),
-#                       stat = "smooth", method = "gam", formula = y ~ s(x), span = 0.5,
-#                       size = 4, alpha = 0.5,
-#                       colour = "slategray") +
-#             geom_line(data = formatted_cov_dat,
-#                       aes(x = pos, y = log2(cov + 1)),
-#                       stat = "smooth", method = "gam", formula = y ~ s(x),
-#                       size = 2, alpha = 1,
-#                       colour = viridis_pal()(12)[11]) +
             geom_smooth(data = formatted_cov_dat,
                         aes(x = pos, y = log2(cov + 1)),
                         size = 2, colour = viridis_pal()(12)[11])
     }
 
-
-    if (color_by == "lib_num") {
-        p_cov <- p_cov + 
-            scale_color_manual(values = line_cols) +
-            guides(colour = FALSE)        
-    } else {
-        p_cov <- p_cov +
-            scale_color_viridis(begin = 0, end = 1, option = "B")
-            # scale_color_gradient(low = v_pal[1], high = v_pal[3])
-    }
-    
-    p_cov <- p_cov +    
+    p_cov <- p_cov +
+        scale_color_viridis(begin = 0, end = 1, option = "B") +
         scale_fill_viridis(discrete = TRUE, direction = -1) +
         theme_bw() +
         scale_x_continuous(expand = c(0.01, 0)) +
         scale_y_continuous(expand = c(0.01, 0), limits = c(0, height)) +
         theme(legend.position = "top")
 
-    if (split) {
-        p_cov <- p_cov +
-            facet_grid(donor_id ~ timepoint)
-    }
-    
-#     if (hide_legend) {
-#         p_cov <- p_cov +
-#             guides(fill = FALSE, colour = FALSE, alpha = FALSE)
-#     }
     return(p_cov)
 }
 
-plot_coverage(bulk_cov_dat, car_dat, color_by = "log2(CAR + 1)", 
-              all_fits = FALSE, fits_only = FALSE, split = FALSE)
 
 # format reference data ----------------------------------------------------
 xcript_dat <- as.data.frame(xcripts_gtf) %>% 
@@ -163,8 +115,28 @@ egfrt_dat <- egfrt_dat %>%
     dplyr::rename(egfr_xcript = transcript_id) %>% 
     filter(seqnames != "NR_047551") # removing because non-coding RNA
 
+# add segment to CAR coverage data ----------------------------------------
 
-# format coverage data ----------------------------------------------------
+# function to append CAR segment
+get_segment <- Vectorize(function(pos) {
+    pos <- ceiling(pos)
+    xcript_dat %>% 
+        filter(seqnames == "CAR-1",
+               (start - 1) <= pos & (end + 1) >= pos) %>% 
+        select(transcript_id) %>% 
+        as.character()
+})
+
+lib_cov <- car_cov_dat %>% 
+    filter(lib_id == car_cov_dat$lib_id[1]) %>% 
+    mutate(segment = get_segment(pos)) %>% 
+    select(pos, segment)
+
+car_cov_dat <- car_cov_dat %>% 
+    left_join(lib_cov, by = c("pos" = "pos")) %>% 
+    filter(segment != "character(0)")
+
+# format CAR coverage data -------------------------------------------------
 
 bulk_cov_dat <- bulk_lib_dat %>% 
     prep_cov_dat(car_cov_dat, bulk_metric_dat) %>% 
@@ -176,18 +148,121 @@ p89_c1_cov_dat <- sc_lib_dat %>%
 p85_c1_cov_dat <- p85_lib_dat %>% 
     prep_cov_dat(car_cov_dat, p85_metric_dat)
 
+# create CAR coverage plots -----------------------------------------------
 
-# create combined plots ---------------------------------------------------
-
-bulk_cov_dat %>% 
+car_plot <- bulk_cov_dat %>% 
     mutate(samples = "CAR T-cells (bulk)") %>% 
     bind_rows(p89_c1_cov_dat %>% 
                   mutate(samples = "CAR T-cells (single)")) %>% 
     bind_rows(p85_c1_cov_dat %>% 
                   mutate(samples = "MAI T-cells (single)")) %>% 
     plot_coverage(car_dat, color_by = "log2(CAR + 1)",
-                  all_fits = FALSE, fits_only = FALSE, split = FALSE) +
+                  all_fits = FALSE, fits_only = FALSE) +
     facet_grid( ~ samples)
+car_plot
 
-# plot_grid(p1, p2, p3, ncol = 3, nrow = 1, 
-#           hjust = 0)
+
+# format EGFR coverage data -----------------------------------------------
+
+p89_c1_egfr_cov_dat <- sc_lib_dat %>% 
+    prep_cov_dat(egfr_cov_dat %>% 
+                     filter(egfr_xcript != "EGFRt_r5"), # remove non-coding RNA
+                 sc_metric_dat) %>% 
+    filter(!is.na(egfr_xcript))
+    
+# create EGFR coverage plots ----------------------------------------------
+
+xcript_labels = list()
+for (xcript in egfrt_dat$egfr_xcript) {
+    xcript_labels[xcript] <- egfrt_dat$seqnames[which(egfrt_dat$egfr_xcript == xcript)]
+}
+xcript_labels <- unlist(xcript_labels)
+
+egfr_plot <- p89_c1_egfr_cov_dat %>% 
+    plot_coverage(egfrt_dat, all_fits = FALSE, fits_only = FALSE) +
+    facet_wrap(~ egfr_xcript, scales = "free_x",
+               labeller = labeller(egfr_xcript = xcript_labels))
+egfr_plot
+
+
+
+# filter libraries with no CAR coverage -----------------------------------
+
+detect_car <- function(formatted_cov_dat, cov_min = 1, run_min = 8) {
+    cov_indicator_dat <- formatted_cov_dat %>% 
+        select(lib_id, segment, pos, cov) %>% 
+        group_by(lib_id) %>% 
+        mutate(prev = lag(segment, 1), 
+               subs = lead(segment, 1)) %>% 
+        ungroup() %>% 
+        mutate(junction = ifelse(!is.na(prev) & prev != subs, 
+                                 str_c(prev, subs, sep = ":"), NA)) %>% 
+        ungroup() %>% 
+        filter(segment %in% c("CD19scFv", "T2A", "EGFRt") | !is.na(junction)) %>% 
+        mutate(nz = cov >= cov_min) %>% 
+        group_by(lib_id, segment) %>% 
+        mutate(run_length = rep(rle(unlist(nz)) %>% .$lengths,
+                                rle(unlist(nz)) %>% .$lengths)) %>% 
+        ungroup() %>% 
+        mutate(run_length = ifelse(nz, run_length, 0)) %>% 
+        group_by(lib_id, junction) %>% 
+        mutate(jxn_length = rep(rle(unlist(nz)) %>% .$lengths, 
+                                rle(unlist(nz)) %>% .$lengths)) %>% 
+        ungroup() %>% 
+        mutate(jxn_length = ifelse(!is.na(junction) & nz, jxn_length, 0)) %>% 
+#         filter(nz) %>% 
+        group_by(lib_id) %>% 
+        summarise(car_detected = max(run_length) >= run_min |
+                      sum(jxn_length == 2) >= 1)
+    
+    formatted_cov_dat %>% 
+        left_join(cov_indicator_dat %>% 
+                      select(lib_id, car_detected)) %>% 
+        group_by(lib_id) %>% 
+        mutate(nz_cov = sum(cov > 0) >= 5 | max(cov) >= 2) %>% 
+        ungroup()
+}
+
+
+p89_cov_w_car_detect_dat <- detect_car(p89_c1_cov_dat, cov_min = 1, run_min = 8)
+
+p89_cov_w_car_detect_dat %>% 
+    filter(!is.na(nz_cov)) %>% 
+    group_by(car_detected, nz_cov) %>% 
+    summarise(n_libs = n_distinct(lib_id))
+
+
+p85_cov_w_car_detect_dat <- detect_car(p85_c1_cov_dat, cov_min = 1, run_min = 8)
+
+p85_cov_w_car_detect_dat %>% 
+    filter(!is.na(nz_cov)) %>% 
+    group_by(car_detected, nz_cov) %>% 
+    summarise(n_libs = n_distinct(lib_id))
+
+# create plot of CAR coverage for remaining libs ---------------------------
+
+donor_id_labels <- c(x145 = "x145", x194 = "x194", x228 = "x228")
+# donor_id_labels <- c(x145 = "ALL1", x194 = "ALL2", x228 = "ALL3")
+timepoint_labels <- c(IP = "IP", t1 = "Peak", t2 = "Late")
+
+car_plot_2 <- p89_cov_w_car_detect_dat %>% 
+    filter(!is.na(nz_cov),
+           car_detected) %>% 
+    plot_coverage(car_dat, all_fits = TRUE, fits_only = TRUE,
+                  color_by = "log2(CAR + 1)") +
+    guides(fill = FALSE) +
+    theme(legend.position = "right") +
+    facet_grid(donor_id ~ timepoint, 
+               labeller = labeller(donor_id = donor_id_labels,
+                                   timepoint = timepoint_labels))
+    # facet_wrap(~ timepoint)
+car_plot_2
+
+
+
+# build combined plot -----------------------------------------------------
+http://127.0.0.1:45390/graphics/plot_zoom_png?width=859&height=770
+ggdraw() +
+    draw_plot(car_plot, 0, 0.6, 1, 0.4) +
+    draw_plot(egfr_plot, 0, 0, 0.4, 0.6) +
+    draw_plot(car_plot_2, 0.4, 0, 0.6, 0.6)
