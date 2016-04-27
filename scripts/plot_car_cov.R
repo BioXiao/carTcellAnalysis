@@ -77,8 +77,8 @@ plot_coverage <- function(formatted_cov_dat, gtf_dat,
         p_cov <- p_cov +
             geom_point(data = formatted_cov_dat, 
                        aes_string(x = "pos", y = "log2(cov + 1)"),
-                       stroke = 0.5, size = 2, alpha = 0.7, 
-                       colour = "slategray")
+                       stroke = 0.5, size = 1.5, alpha = 0.3, 
+                       colour = "black")
     }
     if (all_fits) {
         p_cov <- p_cov +
@@ -113,8 +113,9 @@ xcript_dat <- as.data.frame(xcripts_gtf) %>%
 # quick fix for egfrt_dat
 egfrt_dat <- egfrt_dat %>% 
     dplyr::rename(egfr_xcript = transcript_id) %>% 
-    filter(seqnames != "NR_047551") # removing because non-coding RNA
-
+    filter(seqnames != "NR_047551") %>%  # removing because non-coding RNA
+    mutate(segment = "EGFRt")
+    
 # add segment to CAR coverage data ----------------------------------------
 
 # function to append CAR segment
@@ -148,20 +149,6 @@ p89_c1_cov_dat <- sc_lib_dat %>%
 p85_c1_cov_dat <- p85_lib_dat %>% 
     prep_cov_dat(car_cov_dat, p85_metric_dat)
 
-# create CAR coverage plots -----------------------------------------------
-
-car_plot <- bulk_cov_dat %>% 
-    mutate(samples = "CAR T-cells (bulk)") %>% 
-    bind_rows(p89_c1_cov_dat %>% 
-                  mutate(samples = "CAR T-cells (single)")) %>% 
-    bind_rows(p85_c1_cov_dat %>% 
-                  mutate(samples = "MAI T-cells (single)")) %>% 
-    plot_coverage(car_dat, color_by = "log2(CAR + 1)",
-                  all_fits = FALSE, fits_only = FALSE) +
-    facet_grid( ~ samples)
-car_plot
-
-
 # format EGFR coverage data -----------------------------------------------
 
 p89_c1_egfr_cov_dat <- sc_lib_dat %>% 
@@ -169,22 +156,6 @@ p89_c1_egfr_cov_dat <- sc_lib_dat %>%
                      filter(egfr_xcript != "EGFRt_r5"), # remove non-coding RNA
                  sc_metric_dat) %>% 
     filter(!is.na(egfr_xcript))
-    
-# create EGFR coverage plots ----------------------------------------------
-
-xcript_labels = list()
-for (xcript in egfrt_dat$egfr_xcript) {
-    xcript_labels[xcript] <- egfrt_dat$seqnames[which(egfrt_dat$egfr_xcript == xcript)]
-}
-xcript_labels <- unlist(xcript_labels)
-
-egfr_plot <- p89_c1_egfr_cov_dat %>% 
-    plot_coverage(egfrt_dat, all_fits = FALSE, fits_only = FALSE) +
-    facet_wrap(~ egfr_xcript, scales = "free_x",
-               labeller = labeller(egfr_xcript = xcript_labels))
-egfr_plot
-
-
 
 # filter libraries with no CAR coverage -----------------------------------
 
@@ -210,7 +181,6 @@ detect_car <- function(formatted_cov_dat, cov_min = 1, run_min = 8) {
                                 rle(unlist(nz)) %>% .$lengths)) %>% 
         ungroup() %>% 
         mutate(jxn_length = ifelse(!is.na(junction) & nz, jxn_length, 0)) %>% 
-#         filter(nz) %>% 
         group_by(lib_id) %>% 
         summarise(car_detected = max(run_length) >= run_min |
                       sum(jxn_length == 2) >= 1)
@@ -222,7 +192,6 @@ detect_car <- function(formatted_cov_dat, cov_min = 1, run_min = 8) {
         mutate(nz_cov = sum(cov > 0) >= 5 | max(cov) >= 2) %>% 
         ungroup()
 }
-
 
 p89_cov_w_car_detect_dat <- detect_car(p89_c1_cov_dat, cov_min = 1, run_min = 8)
 
@@ -239,6 +208,45 @@ p85_cov_w_car_detect_dat %>%
     group_by(car_detected, nz_cov) %>% 
     summarise(n_libs = n_distinct(lib_id))
 
+# create CAR coverage plots -----------------------------------------------
+
+car_plot <- bulk_cov_dat %>% 
+    mutate(samples = "CAR T-cells (bulk)") %>% 
+    bind_rows(p89_c1_cov_dat %>% 
+                  mutate(samples = "CAR T-cells (single)")) %>% 
+    bind_rows(p85_c1_cov_dat %>% 
+                  mutate(samples = "MAI T-cells (single)")) %>% 
+    plot_coverage(car_dat, color_by = "log2(CAR + 1)",
+                  all_fits = FALSE, fits_only = FALSE) +
+    guides(fill = guide_legend(title = "CAR segment", 
+                               title.theme = element_text(size = 10, 
+                                                          face = "bold", 
+                                                          angle = 0),
+                               nrow = 1)) +
+    xlab("Position [bp]") +
+    ylab("Coverage [log2(reads + 1)]") +
+    facet_grid( ~ samples)
+    
+# create EGFR coverage plots ----------------------------------------------
+
+xcript_labels = list()
+for (xcript in egfrt_dat$egfr_xcript) {
+    xcript_labels[xcript] <- egfrt_dat$seqnames[which(egfrt_dat$egfr_xcript == xcript)]
+}
+xcript_labels <- unlist(xcript_labels)
+
+egfr_plot <- p89_c1_egfr_cov_dat %>% 
+    plot_coverage(egfrt_dat, all_fits = FALSE, fits_only = FALSE) +
+    guides(fill = guide_legend(title = "CAR overlap", 
+                               title.theme = element_text(size = 10, 
+                                                          face = "bold", 
+                                                          angle = 0),
+                               nrow = 1)) +
+    xlab("Position [bp]") +
+    ylab("Coverage [log2(reads + 1)]") +
+    facet_wrap(~ egfr_xcript, scales = "free_x",
+               labeller = labeller(egfr_xcript = xcript_labels))
+
 # create plot of CAR coverage for remaining libs ---------------------------
 
 donor_id_labels <- c(x145 = "x145", x194 = "x194", x228 = "x228")
@@ -250,19 +258,21 @@ car_plot_2 <- p89_cov_w_car_detect_dat %>%
            car_detected) %>% 
     plot_coverage(car_dat, all_fits = TRUE, fits_only = TRUE,
                   color_by = "log2(CAR + 1)") +
-    guides(fill = FALSE) +
-    theme(legend.position = "right") +
+    guides(fill = FALSE,
+           colour = guide_colorbar(title = "CAR abundance [log2(TPM + 1)]", 
+                                   title.theme = element_text(size = 10, 
+                                                              face = "bold", 
+                                                              angle = 0))) +
+    xlab("Position [bp]") +
+    ylab("Coverage [log2(reads + 1)]") +
     facet_grid(donor_id ~ timepoint, 
                labeller = labeller(donor_id = donor_id_labels,
                                    timepoint = timepoint_labels))
-    # facet_wrap(~ timepoint)
-car_plot_2
-
 
 
 # build combined plot -----------------------------------------------------
-http://127.0.0.1:45390/graphics/plot_zoom_png?width=859&height=770
 ggdraw() +
     draw_plot(car_plot, 0, 0.6, 1, 0.4) +
     draw_plot(egfr_plot, 0, 0, 0.4, 0.6) +
-    draw_plot(car_plot_2, 0.4, 0, 0.6, 0.6)
+    draw_plot(car_plot_2, 0.4, 0, 0.6, 0.6) +
+    draw_plot_label(c("A", "B", "C"), c(0, 0, 0.4), c(1, 0.6, 0.6), size = 12)
