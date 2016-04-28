@@ -78,7 +78,7 @@ plot_coverage <- function(formatted_cov_dat, gtf_dat,
             geom_point(data = formatted_cov_dat, 
                        aes_string(x = "pos", y = "log2(cov + 1)"),
                        stroke = 0.5, size = 1.5, alpha = 0.3, 
-                       colour = "black")
+                       colour = "#333333")
     }
     if (all_fits) {
         p_cov <- p_cov +
@@ -86,12 +86,12 @@ plot_coverage <- function(formatted_cov_dat, gtf_dat,
                         aes_string(x = "pos", y = "log2(cov + 1)",
                                    group = "lib_id", colour = color_by),
                         method = "gam", formula = y ~ s(x), se = FALSE,
-                        size = 1.5)
+                        size = 1)
     } else {
         p_cov <- p_cov +
             geom_smooth(data = formatted_cov_dat,
                         aes(x = pos, y = log2(cov + 1)),
-                        size = 2, colour = viridis_pal()(12)[11])
+                        size = 1.5, colour = viridis_pal()(12)[11])
     }
 
     p_cov <- p_cov +
@@ -144,7 +144,8 @@ bulk_cov_dat <- bulk_lib_dat %>%
     filter(donor_id %in% c("x145", "x194", "x228"))
 
 p89_c1_cov_dat <- sc_lib_dat %>% 
-    prep_cov_dat(car_cov_dat, sc_metric_dat)
+    prep_cov_dat(car_cov_dat, sc_metric_dat) %>% 
+    filter(lib_id %in% lib_list)
 
 p85_c1_cov_dat <- p85_lib_dat %>% 
     prep_cov_dat(car_cov_dat, p85_metric_dat)
@@ -225,7 +226,9 @@ car_plot <- bulk_cov_dat %>%
                                nrow = 1)) +
     xlab("Position [bp]") +
     ylab("Coverage [log2(reads + 1)]") +
-    facet_grid( ~ samples)
+    facet_grid( ~ samples) +
+    theme(panel.margin = unit(2, "lines"),
+          plot.margin = unit(c(0, 1, 0, 1), "lines"))
     
 # create EGFR coverage plots ----------------------------------------------
 
@@ -245,7 +248,8 @@ egfr_plot <- p89_c1_egfr_cov_dat %>%
     xlab("Position [bp]") +
     ylab("Coverage [log2(reads + 1)]") +
     facet_wrap(~ egfr_xcript, scales = "free_x",
-               labeller = labeller(egfr_xcript = xcript_labels))
+               labeller = labeller(egfr_xcript = xcript_labels)) +
+    theme(plot.margin = unit(c(0, 1, 0, 1), "lines"))
 
 # create plot of CAR coverage for remaining libs ---------------------------
 
@@ -267,12 +271,23 @@ car_plot_2 <- p89_cov_w_car_detect_dat %>%
     ylab("Coverage [log2(reads + 1)]") +
     facet_grid(donor_id ~ timepoint, 
                labeller = labeller(donor_id = donor_id_labels,
-                                   timepoint = timepoint_labels))
+                                   timepoint = timepoint_labels)) +
+    theme(panel.margin = unit(1, "lines"),
+          plot.margin = unit(c(0, 1, 0, 1), "lines"))
 
 
 # build combined plot -----------------------------------------------------
-ggdraw() +
+
+combined_plot <- ggdraw() +
     draw_plot(car_plot, 0, 0.6, 1, 0.4) +
-    draw_plot(egfr_plot, 0, 0, 0.4, 0.6) +
-    draw_plot(car_plot_2, 0.4, 0, 0.6, 0.6) +
-    draw_plot_label(c("A", "B", "C"), c(0, 0, 0.4), c(1, 0.6, 0.6), size = 12)
+    draw_plot(egfr_plot, 0, 0, 0.45, 0.6) +
+    draw_plot(car_plot_2, 0.45, 0, 0.55, 0.6) +
+    draw_plot_label(c("A", "B", "C"), c(0, 0, 0.45), c(0.98, 0.58, 0.58), 
+                    size = 12)
+
+
+# save plot ---------------------------------------------------------------
+
+ggsave("car_detect_fig.png", combined_plot, 
+       scale = 1.6,
+       width = 17.35, height = 17.35, units = "cm", dpi = 300)
