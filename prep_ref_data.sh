@@ -44,7 +44,7 @@ MERGE="True"
 TRANSCRIPT="True"
 
 echo "[1/8]"
-if [ ! -e "$GENE_XCRIPT_FASTA" ] || [ ${FORCE} == 1 ]; then
+if [ ! -e "$CAR_XCRIPT_FASTA" ] || [ ${FORCE} == 1 ]; then
     echo "Formatting raw sequence to produce merged FASTA..."
     python scripts/format_fasta.py \
         $RAW_CAR_SEQ \
@@ -63,15 +63,15 @@ fi
 # HG38_GENOME_FASTA: reference human genome (hg38) from iGenomes
 # HG38_XCRIPT_GTF: reference gene models for hg38 from iGenomes
 
-HG38_XCRIPT_FASTA="${ANNOTATION_DIR}/hg38/hg38_transcripts.fa"
+HG38_XCRIPT_FASTA="${SEQUENCE_DIR}/hg38/hg38_transcripts.fa"
 
 echo "[2/8]"
 if [ ! -e "$HG38_XCRIPT_FASTA" ] || [ ${FORCE} == 1 ]; then
     echo "Converting reference gene model GTF to transcriptome FASTA..."
-    gffread \
-        -w $HG38_XCRIPT_FASTA
-        -g $HG38_GENOME_FASTA
-        $HG38_XCRIPT_GTF
+    # gffread \
+    #     -w $HG38_XCRIPT_FASTA
+    #     -g $HG38_GENOME_FASTA
+    #     $HG38_XCRIPT_GTF
 else
     echo "Reference transcriptome FASTA already exists; skipping."
 fi
@@ -117,7 +117,7 @@ MERGE="False"
 TRANSCRIPT="False"
 
 echo "[4/8]"
-if [ ! -e "$CAR_PARTS_FASTA" ]; || [ ${FORCE} == 1 ] then
+if [ ! -e "$CAR_PARTS_FASTA" ] || [ ${FORCE} == 1 ]; then
     echo "Formatting raw sequence to produce FASTA records for all segments..."
     python scripts/format_fasta.py \
         $RAW_CAR_SEQ \
@@ -206,7 +206,7 @@ fi
 CAR_PLUS_OVERLAP_GTF="${ANNOTATION_DIR}/car_plus_overlap.gtf"
 
 echo "[8/8]"
-if [ ! -e "$CAR_PLUS_REF_GTF" || [ ${FORCE} == 1 ]]; then
+if [ ! -e "$CAR_PLUS_OVERLAP_GTF" ] || [ ${FORCE} == 1 ]; then
     echo "Combining pseudo-GTF records into a single file..."
     cat \
         $CAR_PARTS_GTF \

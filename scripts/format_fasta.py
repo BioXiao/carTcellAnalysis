@@ -61,7 +61,6 @@ def build_fasta_records(partsDict, name, merge=True, transcript=False):
                        'N' nucleotides will be inserted between parts to
                        simulate not-yet-spliced introns.
     '''
-
     fastaRecords = []
     seqId = name + '-1'
     if merge:
@@ -74,7 +73,7 @@ def build_fasta_records(partsDict, name, merge=True, transcript=False):
                                 for part in partsDict ])
         record = SeqRecord(Seq(mergedSeq, single_letter_alphabet),
                            id=seqId,
-                           description=("gene=%s %s_full_gene" % (name, name))
+                           description=("gene=%s %s_full_gene" % (name, name)))
         fastaRecords.append(record)
     else:
         for part in partsDict:
@@ -83,7 +82,6 @@ def build_fasta_records(partsDict, name, merge=True, transcript=False):
                                description=("gene=%s %s_gene_part=%s" %
                                             (name, name, part)))
             fastaRecords.append(record)
-    print(fastaRecords[0])
     return fastaRecords
 
 def write_fasta(fastaRecords, fastaOutFile):
@@ -97,11 +95,11 @@ def main(argv):
     name = sys.argv[2]
     fastaOutFile = sys.argv[3]
     if len(sys.argv) > 4:
-        merge = sys.argv[4]
+        merge = {'true': True, 'false': False}[sys.argv[4].lower()]
     else:
         merge = False
     if len(sys.argv) > 5:
-        transcript = sys.argv[5]
+        transcript = {'true': True, 'false': False}[sys.argv[5].lower()]
     else:
         transcript = False
 
