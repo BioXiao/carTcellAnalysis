@@ -7,20 +7,20 @@ from Bio.SeqRecord import SeqRecord
 from Bio.Alphabet import single_letter_alphabet
 
 def read_fasta(rawFastaFile):
-    '''
+    """
     Simply read in raw (unformatted) sequence file as text.
-    '''
+    """
 
     with open(rawFastaFile, 'rU') as f:
         fastaLines = f.readlines()
     return fastaLines
 
 def get_parts(fastaLines):
-    '''
+    """
     Parse unformatted sequences from gene construct to identify division points
     between individual 'parts'; store part names and corresponding lines of
     text.
-    '''
+    """
 
     parts = []
     partLines = []
@@ -32,9 +32,9 @@ def get_parts(fastaLines):
     return (parts, partLines)
 
 def build_parts_dict(fastaLines, parts, partLines):
-    '''
+    """
     Extract sequences and labels from lists of part names and lines.
-    '''
+    """
 
     partLines = [-1] + partLines
     partsDict = OrderedDict()
@@ -43,7 +43,7 @@ def build_parts_dict(fastaLines, parts, partLines):
         partRange = fastaLines[partLines[partNum]+1:partLines[partNum + 1]+1]
         partSeq = [ fastaLine.split(' ')[0] \
                     for fastaLine in partRange ]
-        partsDict[part] = ('').join([ re.sub("\n", "", seq).lower() \
+        partsDict[part] = ('').join([ re.sub("\n", "", seq).upper() \
                                       for seq in partSeq ])
     return partsDict
 
@@ -63,30 +63,34 @@ def build_fasta_records(partsDict, gene, merge=True, transcript=False):
 
     fastaRecords = []
     # pad each individual sequence with 5 N's on each side
+    seqId = gene + '-1'
     if merge:
         if transcript:
             bufSeq = ''
-            seqId = gene + '-1'
         else:
             bufSeq = 'NNNNN'
-            seqId = '0'
+
         mergedSeq = ('').join([ bufSeq + partsDict[part] + bufSeq \
                                 for part in partsDict ])
         record = SeqRecord(Seq(mergedSeq, single_letter_alphabet),
                            id=seqId,
-                           description=("%s_full_gene" % gene))
+                           description=("gene=%s %s_full_gene" % (gene, gene)))
         fastaRecords.append(record)
     else:
         for part in partsDict:
             record = SeqRecord(Seq(partsDict[part], single_letter_alphabet),
-                               id=part,
-                               description=("%s_gene_part:%s" % (gene, part)))
+                               id=seqId,
+                               description=("gene=%s %s_gene_part=%s" %
+                                            (gene, gene, part)))
             fastaRecords.append(record)
+    print(fastaRecords[0])
     return fastaRecords
 
 def write_fasta(fastaRecords, fastaOutFile):
     with open(fastaOutFile, 'wb') as f:
-        [ SeqIO.write(record, f, "fasta") for record in fastaRecords ]
+        writer = SeqIO.FastaIO.FastaWriter(f, wrap=70)
+        writer.write_file(fastaRecords)
+        # [ SeqIO.write(record, f, "fasta") for record in fastaRecords ]
 
 def main(argv):
     rawFastaFile = sys.argv[1]
