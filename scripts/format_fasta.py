@@ -1,5 +1,6 @@
 #!/bin/python
 import sys, re
+from collections import OrderedDict
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
@@ -36,7 +37,7 @@ def build_parts_dict(fastaLines, parts, partLines):
     '''
 
     partLines = [-1] + partLines
-    partsDict = {}
+    partsDict = OrderedDict()
     for partNum in range(len(partLines) - 1):
         part = parts[partNum]
         partRange = fastaLines[partLines[partNum]+1:partLines[partNum + 1]+1]
