@@ -1,4 +1,4 @@
-#!/bin/python
+#!/usr/bin/env python
 
 import sys, re
 from Bio import SeqIO
@@ -66,7 +66,6 @@ def main(argv):
     else:
         spacer = 0
 
-    print(spacer)
     fastaRecords = read_fasta(fastaFile)
     fastaList = build_fasta_list(fastaRecords, spacer)
 

@@ -1,4 +1,5 @@
-#!/bin/python
+#!/usr/bin/env python
+
 import sys, re
 from collections import OrderedDict
 from Bio import SeqIO
@@ -47,7 +48,7 @@ def build_parts_dict(fastaLines, parts, partLines):
                                       for seq in partSeq ])
     return partsDict
 
-def build_fasta_records(partsDict, gene, merge=True, transcript=False):
+def build_fasta_records(partsDict, name, merge=True, transcript=False):
     '''
     Build FASTA records from dictionary of gene construct 'parts'.
 
@@ -62,8 +63,7 @@ def build_fasta_records(partsDict, gene, merge=True, transcript=False):
     '''
 
     fastaRecords = []
-    # pad each individual sequence with 5 N's on each side
-    seqId = gene + '-1'
+    seqId = name + '-1'
     if merge:
         if transcript:
             bufSeq = ''
@@ -74,14 +74,14 @@ def build_fasta_records(partsDict, gene, merge=True, transcript=False):
                                 for part in partsDict ])
         record = SeqRecord(Seq(mergedSeq, single_letter_alphabet),
                            id=seqId,
-                           description=("gene=%s %s_full_gene" % (gene, gene)))
+                           description=("gene=%s %s_full_gene" % (name, name))
         fastaRecords.append(record)
     else:
         for part in partsDict:
             record = SeqRecord(Seq(partsDict[part], single_letter_alphabet),
                                id=seqId,
                                description=("gene=%s %s_gene_part=%s" %
-                                            (gene, gene, part)))
+                                            (name, name, part)))
             fastaRecords.append(record)
     print(fastaRecords[0])
     return fastaRecords
@@ -94,7 +94,7 @@ def write_fasta(fastaRecords, fastaOutFile):
 
 def main(argv):
     rawFastaFile = sys.argv[1]
-    gene = sys.argv[2]
+    name = sys.argv[2]
     fastaOutFile = sys.argv[3]
     if len(sys.argv) > 4:
         merge = sys.argv[4]
@@ -108,7 +108,7 @@ def main(argv):
     fastaLines = read_fasta(rawFastaFile)
     parts,partLines = get_parts(fastaLines)
     partsDict = build_parts_dict(fastaLines, parts, partLines)
-    fastaRecords = build_fasta_records(partsDict, gene, merge, transcript)
+    fastaRecords = build_fasta_records(partsDict, name, merge, transcript)
     write_fasta(fastaRecords, fastaOutFile)
 
 if __name__ == "__main__":
