@@ -1,10 +1,38 @@
 
+# clean column names of data frame
+clean_headers <- function(df) {
+    df_names <- names(df)
+    df_names <- str_to_lower(df_names)
+    df_names <- str_replace_all(df_names, "( )+", "_")
+    df_names <- str_replace_all(df_names, "[^[:alnum:]_]", "_")
+    df_names <- str_replace_all(df_names, "_+", "_")
+    df_names <- str_replace_all(df_names, "_$", "")
+    
+    names(df) <- df_names
+    return(df)
+}
+
+# recursively deduplicate names in a vector
+dedup_names <- function(x, n = 1) {
+    n <- n + 1
+    is_dup_name <- duplicated(x)
+    x[is_dup_name] <- x[is_dup_name] %>% 
+        map_chr(function(s) {
+            ifelse(str_detect(s, str_c("_", n - 1)),
+                   str_replace(s, str_c("_", n - 1), str_c("_", n)),
+                   str_c(s, n, sep = "_"))
+        })
+    if(any(duplicated(x))) {
+        dedup_names(x, n)
+    } else {
+        return(x)
+    }
+}
+
 # clean up duplicated headers
 clean_dup_names <- function(df) {
     df_names <- names(df)
-    is_dup_name <- duplicated(df_names)
-    df_names[is_dup_name] <- str_c(df_names[is_dup_name], "2")
-    names(df) <- df_names
+    names(df) <- dedup_names(df_names)
     return(df)
 }
 
@@ -28,11 +56,15 @@ clean_donor_ids <- function(df) {
 # relabel timepoints
 relabel_timepoints <- function(df) {
     df %>% 
-        mutate(timepoint = str_replace(timepoint, " ", ""),
-               timepoint = str_replace(timepoint, "InfusionProduct", "IP"),
-               timepoint = str_replace(timepoint, "Day0", "t0"),
-               timepoint = str_replace(timepoint, "Day(7|8|9|12)", "t1"),
-               timepoint = str_replace(timepoint, "Day(26|28|29|33)", "t2"))
+        mutate(timepoint_short = str_replace(timepoint, " ", ""),
+               timepoint_short = str_replace(timepoint_short, 
+                                             "InfusionProduct", "IP"),
+               timepoint_short = str_replace(timepoint_short, 
+                                             "Day0", "t0"),
+               timepoint_short = str_replace(timepoint_short, 
+                                             "Day(7|8|9|12)", "t1"),
+               timepoint_short = str_replace(timepoint_short, 
+                                             "Day(26|28|29|33)", "t2"))
 }
 
 # convert transcript names to segment names
