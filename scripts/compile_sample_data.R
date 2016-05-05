@@ -96,11 +96,11 @@ p85_c1_metric_dat <- load_metric_data(p85_c1_metric_file_list)
 
 # save compiled files -----------------------------------------------------
 
-write_csv(p89_c1_sample_dat, "data/sample_data/p89_c1_compiled_sample_data.csv")
-write_csv(p89_bulk_sample_dat, "data/sample_data/p89_bulk_compiled_sample_data.csv")
-write_csv(p85_c1_sample_dat, "data/sample_data/p89_c1_compiled_sample_data.csv")
+write_csv(p89_c1_sample_dat, "data/clean/p89_c1_compiled_sample_data.csv")
+write_csv(p89_bulk_sample_dat, "data/clean/p89_bulk_compiled_sample_data.csv")
+write_csv(p85_c1_sample_dat, "data/clean/p85_c1_compiled_sample_data.csv")
 
-write_csv(p89_c1_metric_dat, "data/seq_metrics/p89_c1_compiled_metric_data.csv")
-write_csv(p89_bulk_metric_dat, "data/seq_metrics/p89_bulk_compiled_metric_data.csv")
-write_csv(p85_c1_metric_dat, "data/seq_metrics/p89_c1_compiled_metric_data.csv")
+write_csv(p89_c1_metric_dat, "data/clean/p89_c1_compiled_metric_data.csv")
+write_csv(p89_bulk_metric_dat, "data/clean/p89_bulk_compiled_metric_data.csv")
+write_csv(p85_c1_metric_dat, "data/clean/p85_c1_compiled_metric_data.csv")
 
