@@ -68,10 +68,10 @@ HG38_XCRIPT_FASTA="${SEQUENCE_DIR}/hg38/hg38_transcripts.fa"
 echo "[2/8]"
 if [ ! -e "$HG38_XCRIPT_FASTA" ] || [ ${FORCE} == 1 ]; then
     echo "Converting reference gene model GTF to transcriptome FASTA..."
-    # gffread \
-    #     -w $HG38_XCRIPT_FASTA
-    #     -g $HG38_GENOME_FASTA
-    #     $HG38_XCRIPT_GTF
+    gffread \
+        -w $HG38_XCRIPT_FASTA \
+        -g $HG38_GENOME_FASTA \
+        $HG38_XCRIPT_GTF
 else
     echo "Reference transcriptome FASTA already exists; skipping."
 fi
