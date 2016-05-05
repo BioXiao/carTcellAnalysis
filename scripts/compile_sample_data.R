@@ -6,6 +6,7 @@ library(readxl)
 library(stringr)
 library(dplyr)
 library(tidyr)
+library(purrr)
 library(parallel)
 
 # load functions ----------------------------------------------------------
