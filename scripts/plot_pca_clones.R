@@ -15,11 +15,7 @@ library(viridis)
 resids <- readRDS("data/from_masanao/zlm_resid_labeled.rds")
 annotation <- readRDS("data/from_masanao/annotation.rds")
 
-# load("data/sample_metrics_data.RData")
-
 p89_c1_sample_dat <- read_csv("data/clean/p89_c1_compiled_sample_data.csv")
-
-# load("data/sample_tcr_data.RData")
 
 p89_c1_jxn_summary_dat <- read_csv("data/clean/p85_c1_tcr_summary_data.csv")
 p89_c1_clonotype_dat <- read_csv("data/clean/p85_c1_compiled_tcr_data.csv")
@@ -29,7 +25,6 @@ cb_pal <- colorblind_pal()(8)
 # load functions ----------------------------------------------------------
 
 source("scripts/data_cleaning_functions.R")
-
 
 # calculate principal components ------------------------------------------
 
@@ -51,32 +46,81 @@ pc_dat <- as.data.frame(pca$x) %>%
 # prep data for plotting --------------------------------------------------
 
 # check for clones detected at multiple timepoints
-pc_dat <- pc_dat %>% 
-    group_by(donor_id, clone_id) %>% 
-    dplyr::mutate(num_timepoints = n_distinct(timepoint)) %>% 
+
+# pc_dat <- pc_dat %>% 
+#     group_by(donor_id, clone_id) %>% 
+#     dplyr::mutate(num_timepoints = n_distinct(timepoint)) %>% 
+#     ungroup() %>% 
+#     mutate(jxn_detected = clone_id != "null",
+#            num_timepoints = ifelse(jxn_detected, num_timepoints, 0)) %>% 
+#     mutate(num_timepoints = factor(num_timepoints))
+
+get_chain_status <- Vectorize(function(trav, trbv) {
+    if(!(trav == "null") && !(trbv == "null")) {
+        return("both")
+    } else if((trav == "null") && (trbv == "null")) {
+        return("none")
+    } else if(!(trav == "null")) {
+        return("alpha")
+    } else {
+        return("beta")
+    }
+})
+
+# check for alleles detected at multiple timepoints
+x <- pc_dat %>% 
+    filter(donor_id == "x194") %>% 
+    mutate(detected = get_chain_status(trav, trbv),
+           any_detected = detected != "none") %>% 
+    gather(chain, allele, trav:trbv) %>% 
+    group_by(donor_id, chain, allele) %>% 
+    mutate(num_timepoints = n_distinct(timepoint)) %>% 
     ungroup() %>% 
-    mutate(jxn_detected = clone_id != "null",
-           num_timepoints = ifelse(jxn_detected, num_timepoints, 0)) %>% 
-    mutate(num_timepoints = factor(num_timepoints))
+    mutate(num_timepoints = ifelse(allele != "null", num_timepoints, 0)) %>% 
+    group_by(lib_id) %>% 
+    mutate(repeat_alpha = ifelse(any(chain == "trav" & num_timepoints == 3), 
+                                 allele[chain == "trav" & num_timepoints == 3], 
+                                 "other"), 
+           repeat_beta = ifelse(any(chain == "trbv" & num_timepoints == 3), 
+                                allele[chain == "trbv" & num_timepoints == 3], 
+                                "other"),
+           num_timepoints = max(num_timepoints)) %>% 
+    ungroup()
+    # TODO: add 'any_repeated'
+
 
 # create plot -------------------------------------------------------------
 
 n_colors <- n_distinct(pc_dat[["clone_id"]])
 clone_cb_pal <- colorRampPalette(cb_pal)(n_colors)
 
-pc_dat %>% 
+# pc_dat %>% 
+#     ggplot(aes(x = PC1, y = PC2)) +
+#     geom_point(aes(fill = clone_id, alpha = jxn_detected, 
+#                    size = num_timepoints, shape = num_timepoints)) +
+#     facet_grid(donor_id ~ timepoint) +
+#     scale_fill_manual(values = clone_cb_pal) +
+#     scale_alpha_manual(values = c(0.2, 0.8)) +
+#     scale_shape_manual(values = c(21, 24, 22, 23)) +
+#     scale_size_manual(values = c(2, 2, 4, 6)) +
+#     guides(fill = FALSE, size = FALSE) +
+#     theme_bw() +
+#     theme(panel.grid.major = element_blank(),
+#           panel.grid.minor = element_blank())
+
+x %>% 
     ggplot(aes(x = PC1, y = PC2)) +
-    geom_point(aes(fill = clone_id, alpha = jxn_detected, 
-                   size = num_timepoints, shape = num_timepoints)) +
+    geom_point(aes(fill = repeat_alpha, colour = repeat_beta, 
+                   alpha = any_detected), shape = 21, stroke = 2, size = 3) +
     facet_grid(donor_id ~ timepoint) +
-    scale_fill_manual(values = clone_cb_pal) +
-    scale_alpha_manual(values = c(0.2, 0.8)) +
-    scale_shape_manual(values = c(21, 24, 22, 23)) +
-    scale_size_manual(values = c(2, 2, 4, 6)) +
-    guides(fill = FALSE, size = FALSE) +
-    theme_bw() +
-    theme(panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank())
+    scale_fill_colorblind() +
+    scale_color_colorblind() +
+    # scale_shape_manual(values = c(21, 24, 22, 23)) +
+    theme_bw() 
+#     + theme(panel.grid.major = element_blank(),
+#           panel.grid.minor = element_blank())
+
+
 
 # get clones w/ multiple timepoints ---------------------------------------
 
@@ -84,3 +128,8 @@ clone_summary <- pc_dat %>%
     filter(num_timepoints %in% c(2,3)) %>% 
     select(lib_id, donor_id, timepoint, clone_id, num_timepoints)
 
+# save plot ---------------------------------------------------------------
+
+# ggsave("car_detect_fig.png", combined_plot, 
+#        scale = 1.6,
+#        width = 17.35, height = 17.35, units = "cm", dpi = 300)
