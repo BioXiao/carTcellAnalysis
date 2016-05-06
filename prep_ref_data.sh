@@ -43,7 +43,7 @@ CAR_XCRIPT_FASTA="${SEQUENCE_DIR}/car_transcript.fa"
 MERGE="True"
 TRANSCRIPT="True"
 
-echo "[1/8]"
+echo "[1/9]"
 if [ ! -e "$CAR_XCRIPT_FASTA" ] || [ ${FORCE} == 1 ]; then
     echo "Formatting raw sequence to produce merged FASTA..."
     python scripts/format_fasta.py \
@@ -65,7 +65,7 @@ fi
 
 HG38_XCRIPT_FASTA="${SEQUENCE_DIR}/hg38/hg38_transcripts.fa"
 
-echo "[2/8]"
+echo "[2/9]"
 if [ ! -e "$HG38_XCRIPT_FASTA" ] || [ ${FORCE} == 1 ]; then
     echo "Converting reference gene model GTF to transcriptome FASTA..."
     gffread \
@@ -88,7 +88,7 @@ fi
 
 CUSTOM_XCRIPTOME_FASTA="${SEQUENCE_DIR}/hg38/hg38_car_transcripts.fa"
 
-echo "[3/8]"
+echo "[3/9]"
 if [ ! -e "$CUSTOM_XCRIPTOME_FASTA" ] || [ ${FORCE} == 1 ]; then
     echo "Adding construct transcript sequence to reference transcriptome..."
     cat $CAR_XCRIPT_FASTA \
@@ -116,7 +116,7 @@ CAR_PARTS_FASTA="${SEQUENCE_DIR}/car_parts.fa"
 MERGE="False"
 TRANSCRIPT="False"
 
-echo "[4/8]"
+echo "[4/9]"
 if [ ! -e "$CAR_PARTS_FASTA" ] || [ ${FORCE} == 1 ]; then
     echo "Formatting raw sequence to produce FASTA records for all segments..."
     python scripts/format_fasta.py \
@@ -127,6 +127,19 @@ if [ ! -e "$CAR_PARTS_FASTA" ] || [ ${FORCE} == 1 ]; then
         $TRANSCRIPT
 else
     echo "Construct parts/segments FASTA already exists; skipping."
+fi
+
+# Merge CAR and overlap transcripts FASTA files (useful for IGV)
+
+CAR_PLUS_OVERLAP_FASTA="${SEQUENCE_DIR}/car_plus_overlap.fa"
+
+echo "[5/9]"
+if [ ! -e "$CAR_PLUS_OVERLAP_FASTA" ] || [ ${FORCE} == 1 ]; then
+    echo "Combining CAR and overlapping transcripts into single FASTA..."
+	cat $CAR_XCRIPT_FASTA $CAR_PARTS_FASTA \
+		> $CAR_PLUS_OVERLAP_FASTA
+else
+	echo "Combined FASTA already exists; skipping."
 fi
 
 # From CAR parts FASTA, create gene model GTF; transcript ID is used as
@@ -143,7 +156,7 @@ fi
 CAR_PARTS_GTF="${ANNOTATION_DIR}/car_parts.gtf"
 SPACER=1
 
-echo "[5/8]"
+echo "[6/9]"
 if [ ! -e "$CAR_PARTS_GTF" ] || [ ${FORCE} == 1 ]; then
     echo "Converting construct parts FASTA to pseudo-GTF..."
     python scripts/parts_fasta_to_gtf.py \
@@ -166,7 +179,7 @@ fi
 GENE_MAP_YAML="${ANNOTATION_DIR}/gene_map.yaml"
 CAR_PARTS_OVERLAP_FASTA="${SEQUENCE_DIR}/car_parts_overlap.fa"
 
-echo "[6/8]"
+echo "[7/9]"
 if [ ! -e "$CAR_PARTS_OVERLAP_FASTA" ] || [ ${FORCE} == 1 ]; then
     echo "Extracting transcript FASTA records for genes overlapping with construct..."
     python scripts/get_overlap_transcripts.py \
@@ -190,7 +203,7 @@ fi
 CAR_PARTS_OVERLAP_GTF="${ANNOTATION_DIR}/car_parts_overlap.gtf"
 SPACER=0
 
-echo "[7/8]"
+echo "[8/9]"
 if [ ! -e "$CAR_PARTS_OVERLAP_GTF" ] || [ ${FORCE} == 1 ]; then
     echo "Converting construct overlap FASTA to pseudo-GTF..."
     python scripts/parts_fasta_to_gtf.py \
@@ -205,7 +218,7 @@ fi
 
 CAR_PLUS_OVERLAP_GTF="${ANNOTATION_DIR}/car_plus_overlap.gtf"
 
-echo "[8/8]"
+echo "[9/9]"
 if [ ! -e "$CAR_PLUS_OVERLAP_GTF" ] || [ ${FORCE} == 1 ]; then
     echo "Combining pseudo-GTF records into a single file..."
     cat \
