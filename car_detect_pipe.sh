@@ -41,8 +41,8 @@ else
     echo "hg38 + CAR Salmon quasiindex already exists; skipping."
 fi
 
-RAPMAP_OUT_DIR="data/results/rapmap"
-SALMON_OUT_DIR="data/results/salmon"
+RAPMAP_OUT_DIR="data/rapmap"
+SALMON_OUT_DIR="data/salmon"
 
 XCRIPT_LIST=$(grep ">" ${SEQUENCE_DIR}/car_parts_overlap.fa \
               | awk -F" " '{gsub(">", ""); print $1}')
@@ -79,10 +79,6 @@ while read line; do
         if [ ! -e "${tmp_dir}/$(basename $file)" ]; then
             time rsync -h --progress $file "${tmp_dir}/$(basename $file)"
         fi
-#         read -r -d '' rapmap_cmd << EOF
-# rapmap && \
-#     samtools
-# EOF
         read -r -d '' rapmap_cmd << EOF
 printf "\n...running RapMap...\n" && \
     time rapmap quasimap -t 4 \
