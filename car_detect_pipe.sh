@@ -44,7 +44,7 @@ fi
 RAPMAP_OUT_DIR="data/rapmap"
 SALMON_OUT_DIR="data/salmon"
 
-XCRIPT_LIST=$(grep ">" ${SEQUENCE_DIR}/car_parts_overlap.fa \
+XCRIPT_LIST=$(grep ">" ${SEQUENCE_DIR}/car_plus_overlap.fa \
               | awk -F" " '{gsub(">", ""); print $1}')
 
 # Run RapMap and Salmon on all samples
@@ -67,7 +67,7 @@ while read line; do
     fi
 
     # Run RapMap and format output
-    tmp_dir="data/tmp"
+    tmp_dir="data/input"
     if [ ! -e "$tmp_dir" ]; then
         mkdir "$tmp_dir"
     fi
