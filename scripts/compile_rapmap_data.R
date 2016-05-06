@@ -11,7 +11,7 @@ library(parallel)
 
 # load data ---------------------------------------------------------------
 
-gff_file <- "data/annotation/_old/carPlusRef.gtf"
+gff_file <- "data/annotation/car_plus_overlap.gtf"
 xcripts_gtf <- import.gff2(gff_file)
 xcript_dat <- as.data.frame(xcripts_gtf) %>% 
     mutate(seqnames = as.character(seqnames))
@@ -66,10 +66,9 @@ build_coverage_df <- function(bam_file_list, gtf, seq_name, smooth = 0) {
 
 # specify file paths ------------------------------------------------------
 
-bam_files <- list.files("data/results/_old/rapmap",
+bam_files <- list.files("data/rapmap",
                         full.names = TRUE, recursive = TRUE) %>% 
-    .[str_detect(., ".bam$")] %>% 
-    .[str_detect(., "lib8845")]
+    .[str_detect(., ".bam$")]
 
 # collect & format CAR coverage data for all samples ----------------------
 
@@ -127,7 +126,7 @@ car_dat <- xcript_dat %>%
 # format EGFR GTF data ----------------------------------------------------
 
 # read in reference transcript FASTA
-seqs <- readDNAStringSet("data/sequence/_old/hg38_CAR_transcripts.fa")
+seqs <- readDNAStringSet("data/sequence/hg38/hg38_car_transcripts.fa")
 
 # extract sequences of CAR & EGFR transcripts in 'xcripts_gtf'
 chr_names <- xcripts_gtf %>% 

@@ -9,7 +9,7 @@ library(parallel)
 
 # load data ---------------------------------------------------------------
 
-gff_file <- "data/annotation/_old/carPlusRef.gtf"
+gff_file <- "data/annotation/car_plus_overlap.gtf"
 xcripts_gtf <- import.gff2(gff_file)
 
 # load functions ----------------------------------------------------------
@@ -50,7 +50,7 @@ xcript_list <- xcripts_gtf %>%
 
 # specify file paths ------------------------------------------------------
 
-salmon_files <- list.files("data/_salmon_old",
+salmon_files <- list.files("data/salmon",
                            full.names = TRUE, recursive = TRUE) %>% 
     .[str_detect(., ".sf$")]
 
