@@ -1,51 +1,52 @@
 
 # load libs ---------------------------------------------------------------
 
-library(dplyr)
-library(ggplot2)
+library(readr)
 library(stringr)
+library(dplyr)
 library(tidyr)
-library(rtracklayer)
+library(ggplot2)
+library(scales)
 library(ggthemes)
 library(viridis)
 library(cowplot)
 
-
 # load data ---------------------------------------------------------------
 
-load("data/sample_metrics_data.RData")
-load("data/sample_rapmap_data.RData")
-load("data/sample_salmon_data.RData")
-lib_list <- readRDS("data/libs_NHL_after_filter.rds")
+p89_c1_sample_dat <- read_csv("data/clean/p89_c1_compiled_sample_data.csv")
+p89_bulk_sample_dat <- read_csv("data/clean/p89_bulk_compiled_sample_data.csv")
+p85_c1_sample_dat <- read_csv("data/clean/p85_c1_compiled_sample_data.csv")
 
-gff_file <- "data/annotation/carPlusRef.gtf"
+car_cov_dat <- read_csv("data/clean/all_compiled_car_coverage_data.csv")
+car_dat <- read_csv("data/clean/car_gtf_data.csv")
+
+egfr_cov_dat <- read_csv("data/clean/all_compiled_egfr_coverage_data.csv")
+egfrt_dat <- read_csv("data/clean/egfr_gtf_data.csv")
+
+salmon_quant_dat <- read_csv("data/clean/all_compiled_abundance_data.csv")
+
+lib_list <- readRDS("data/from_masanao/libs_NHL_after_filter.rds")
+
+gff_file <- "data/annotation/_old/carPlusRef.gtf"
 xcripts_gtf <- import.gff2(gff_file)
+xcript_dat <- as.data.frame(xcripts_gtf) %>% 
+    mutate(seqnames = as.character(seqnames)) %>% 
+    filter(seqnames != "NR_047551") # removing because non-coding RNA
+
+# load functions ----------------------------------------------------------
 
 source("scripts/data_cleaning_functions.R")
 
 # define functions --------------------------------------------------------
 
 # create/format data frame for plotting coverage
-prep_cov_dat <- function(lib_dat, cov_dat, metric_dat) {
-    lib_dat %>% 
-        clean_dup_names() %>% 
-        simplify_lib_id() %>%
-        clean_donor_ids() %>% 
+prep_cov_dat <- function(sample_dat, cov_dat, salmon_quant_dat, xcript_dat) {
+    sample_dat %>% 
         select(lib_id, donor_id, timepoint) %>% 
-        relabel_timepoints() %>% 
-        left_join(cov_dat, by = c("lib_id" = "lib_id")) %>% 
-        left_join(metric_dat %>% 
-                      clean_dup_names() %>% 
-                      simplify_lib_id() %>% 
-                      select(lib_id, fastq_total_reads, 
-                             median_cv_coverage, mapped_reads_w_dups),
-                  by = c("lib_id" = "lib_id")) %>% 
-        left_join(map_rate_dat, by = c("lib_id" = "lib_id")) %>% 
-        mutate(mapped_reads = fastq_total_reads * map_rate,
-               norm_cov = cov / mapped_reads) %>% 
+        left_join(cov_dat) %>% 
         left_join(salmon_quant_dat %>% 
-                      select(lib_id, Name, TPM) %>% 
-                      spread(Name, TPM) %>% 
+                      select(lib_id, name, tpm) %>% 
+                      spread(name, tpm) %>% 
                       dplyr::rename(CAR = `CAR-1`) %>% 
                       relabel_transcripts(xcript_dat))
 }
@@ -65,7 +66,7 @@ plot_coverage <- function(formatted_cov_dat, gtf_dat,
         ungroup()
     
     # determine plot height
-    height <- log2(max(formatted_cov_dat$cov, na.rm = TRUE) + 1)
+    height <- log2(max(formatted_cov_dat[["cov"]], na.rm = TRUE) + 1)
     
     # build plot
     p_cov <- ggplot() +
@@ -105,61 +106,7 @@ plot_coverage <- function(formatted_cov_dat, gtf_dat,
     return(p_cov)
 }
 
-
-# format reference data ----------------------------------------------------
-xcript_dat <- as.data.frame(xcripts_gtf) %>% 
-    filter(seqnames != "NR_047551") # removing because non-coding RNA
-
-# quick fix for egfrt_dat
-egfrt_dat <- egfrt_dat %>% 
-    dplyr::rename(egfr_xcript = transcript_id) %>% 
-    filter(seqnames != "NR_047551") %>%  # removing because non-coding RNA
-    mutate(segment = "EGFRt")
-    
-# add segment to CAR coverage data ----------------------------------------
-
-# function to append CAR segment
-get_segment <- Vectorize(function(pos) {
-    pos <- ceiling(pos)
-    xcript_dat %>% 
-        filter(seqnames == "CAR-1",
-               (start - 1) <= pos & (end + 1) >= pos) %>% 
-        select(transcript_id) %>% 
-        as.character()
-})
-
-lib_cov <- car_cov_dat %>% 
-    filter(lib_id == car_cov_dat$lib_id[1]) %>% 
-    mutate(segment = get_segment(pos)) %>% 
-    select(pos, segment)
-
-car_cov_dat <- car_cov_dat %>% 
-    left_join(lib_cov, by = c("pos" = "pos")) %>% 
-    filter(segment != "character(0)")
-
-# format CAR coverage data -------------------------------------------------
-
-bulk_cov_dat <- bulk_lib_dat %>% 
-    prep_cov_dat(car_cov_dat, bulk_metric_dat) %>% 
-    filter(donor_id %in% c("x145", "x194", "x228"))
-
-p89_c1_cov_dat <- sc_lib_dat %>% 
-    prep_cov_dat(car_cov_dat, sc_metric_dat) %>% 
-    filter(lib_id %in% lib_list)
-
-p85_c1_cov_dat <- p85_lib_dat %>% 
-    prep_cov_dat(car_cov_dat, p85_metric_dat)
-
-# format EGFR coverage data -----------------------------------------------
-
-p89_c1_egfr_cov_dat <- sc_lib_dat %>% 
-    prep_cov_dat(egfr_cov_dat %>% 
-                     filter(egfr_xcript != "EGFRt_r5"), # remove non-coding RNA
-                 sc_metric_dat) %>% 
-    filter(!is.na(egfr_xcript))
-
-# filter libraries with no CAR coverage -----------------------------------
-
+# even crazier function to assign CAR detection status based on coverage rules
 detect_car <- function(formatted_cov_dat, cov_min = 1, run_min = 8) {
     cov_indicator_dat <- formatted_cov_dat %>% 
         select(lib_id, segment, pos, cov) %>% 
@@ -194,15 +141,39 @@ detect_car <- function(formatted_cov_dat, cov_min = 1, run_min = 8) {
         ungroup()
 }
 
-p89_cov_w_car_detect_dat <- detect_car(p89_c1_cov_dat, cov_min = 1, run_min = 8)
+# format CAR coverage data -------------------------------------------------
+
+p89_bulk_cov_dat <- p89_bulk_sample_dat %>% 
+    prep_cov_dat(car_cov_dat, salmon_quant_dat, xcript_dat) %>% 
+    filter(donor_id %in% c("x145", "x194", "x228"))
+
+p89_c1_cov_dat <- p89_c1_sample_dat %>% 
+    prep_cov_dat(car_cov_dat, salmon_quant_dat, xcript_dat) %>% 
+    filter(lib_id %in% lib_list)
+
+p85_c1_cov_dat <- p85_c1_sample_dat %>% 
+    prep_cov_dat(car_cov_dat, salmon_quant_dat, xcript_dat)
+
+# format EGFR coverage data -----------------------------------------------
+
+p89_c1_egfr_cov_dat <- sc_lib_dat %>% 
+    prep_cov_dat(egfr_cov_dat %>% 
+                     filter(egfr_xcript != "EGFRt_r5"), # remove non-coding RNA
+                 sc_metric_dat) %>% 
+    filter(!is.na(egfr_xcript))
+
+# assign CAR detection status in single cell libs -------------------------
+
+p89_cov_w_car_detect_dat <- p89_c1_cov_dat %>% 
+    detect_car(cov_min = 1, run_min = 8)
 
 p89_cov_w_car_detect_dat %>% 
     filter(!is.na(nz_cov)) %>% 
     group_by(car_detected, nz_cov) %>% 
     summarise(n_libs = n_distinct(lib_id))
 
-
-p85_cov_w_car_detect_dat <- detect_car(p85_c1_cov_dat, cov_min = 1, run_min = 8)
+p85_cov_w_car_detect_dat <- p85_c1_cov_dat %>% 
+    detect_car(cov_min = 1, run_min = 8)
 
 p85_cov_w_car_detect_dat %>% 
     filter(!is.na(nz_cov)) %>% 
@@ -275,7 +246,6 @@ car_plot_2 <- p89_cov_w_car_detect_dat %>%
     theme(panel.margin = unit(1, "lines"),
           plot.margin = unit(c(0, 1, 0, 1), "lines"))
 
-
 # build combined plot -----------------------------------------------------
 
 combined_plot <- ggdraw() +
@@ -284,7 +254,6 @@ combined_plot <- ggdraw() +
     draw_plot(car_plot_2, 0.45, 0, 0.55, 0.6) +
     draw_plot_label(c("A", "B", "C"), c(0, 0, 0.45), c(0.98, 0.58, 0.58), 
                     size = 12)
-
 
 # save plot ---------------------------------------------------------------
 
