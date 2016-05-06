@@ -1,80 +1,53 @@
 
 # load libs ---------------------------------------------------------------
-library(dplyr)
-library(ggplot2)
+
+library(readr)
 library(stringr)
+library(dplyr)
 library(tidyr)
+library(ggplot2)
 library(scales)
 library(ggthemes)
 library(viridis)
 
 # load data ---------------------------------------------------------------
-resids <- readRDS("data/zlm_resid_labeled.rds")
-annotation <- readRDS("data/annotation.rds")
 
-load("data/sample_metrics_data.RData")
-load("data/sample_tcr_data.RData")
+resids <- readRDS("data/from_masanao/zlm_resid_labeled.rds")
+annotation <- readRDS("data/from_masanao/annotation.rds")
+
+# load("data/sample_metrics_data.RData")
+
+p89_c1_sample_dat <- read_csv("data/clean/p89_c1_compiled_sample_data.csv")
+
+# load("data/sample_tcr_data.RData")
+
+p89_c1_jxn_summary_dat <- read_csv("data/clean/p85_c1_tcr_summary_data.csv")
+p89_c1_clonotype_dat <- read_csv("data/clean/p85_c1_compiled_tcr_data.csv")
 
 cb_pal <- colorblind_pal()(8)
 
-# define functions --------------------------------------------------------
+# load functions ----------------------------------------------------------
 
-# clean up duplicated headers
-clean_dup_names <- function(df) {
-    df_names <- names(df)
-    is_dup_name <- duplicated(df_names)
-    df_names[is_dup_name] <- str_c(df_names[is_dup_name], "2")
-    names(df) <- df_names
-    return(df)
-}
+source("scripts/data_cleaning_functions.R")
 
-# simplify library ID
-simplify_lib_id <- function(df) {
-    df_names <- names(df)
-    is_lib_name <- str_detect(tolower(df_names), "lib.*id")
-    df_names[is_lib_name] <- "lib_id"
-    names(df) <- df_names
-    
-    df %>% 
-        mutate(lib_id = str_extract(lib_id, "lib[0-9]+"))
-}
 
-# clean/relabel donor ID
-clean_donor_ids <- function(df) {
-    df %>% 
-        mutate(donor_id = tolower(donor_id))
-}
+# calculate principal components ------------------------------------------
 
-# relabel timepoints
-relabel_timepoints <- function(df) {
-    df %>% 
-        mutate(timepoint = str_replace(timepoint, " ", "")) %>% 
-        mutate(timepoint = str_replace(timepoint, "InfusionProduct", "IP")) %>% 
-        mutate(timepoint = str_replace(timepoint, "Day0", "t0")) %>% 
-        mutate(timepoint = str_replace(timepoint, "Day(7|8|9|12)", "t1")) %>% 
-        mutate(timepoint = str_replace(timepoint, "Day(26|28|29|33)", "t2"))
-}
+pca <- prcomp(t(resids))
 
 # format data -------------------------------------------------------------
 
-# compute principal components
-pca <- prcomp(t(resids))
-
 pc_dat <- as.data.frame(pca$x) %>% 
-    add_rownames(var = "wellKey") %>% 
+    add_rownames(var = "wellKey") %>%
+    select(wellKey, PC1, PC2) %>% 
     left_join(annotation %>% 
                   select(lib_id = libID, wellKey), .) %>% 
     select(-wellKey) %>% 
-    inner_join(sc_lib_dat %>% 
-                   clean_dup_names() %>% 
-                   simplify_lib_id() %>%
-                   clean_donor_ids() %>% 
-                   select(lib_id, donor_id, timepoint) %>% 
-                   relabel_timepoints() %>% 
-                   left_join(jxn_dat), .) %>% 
-    replace_na(list(TRAV = "null", TRBV = "null", clone_id = "null"))
+    inner_join(p89_c1_sample_dat %>% 
+                   select(lib_id, donor_id, timepoint = timepoint_short) %>% 
+                   left_join(p89_c1_clonotype_dat), .) %>% 
+    replace_na(list(trav = "null", trbv = "null", clone_id = "null"))
     
-
 # prep data for plotting --------------------------------------------------
 
 # check for clones detected at multiple timepoints
@@ -86,8 +59,9 @@ pc_dat <- pc_dat %>%
            num_timepoints = ifelse(jxn_detected, num_timepoints, 0)) %>% 
     mutate(num_timepoints = factor(num_timepoints))
 
-# make plot ---------------------------------------------------------------
-n_colors <- n_distinct(pc_dat$clone_id)
+# create plot -------------------------------------------------------------
+
+n_colors <- n_distinct(pc_dat[["clone_id"]])
 clone_cb_pal <- colorRampPalette(cb_pal)(n_colors)
 
 pc_dat %>% 
@@ -104,8 +78,8 @@ pc_dat %>%
     theme(panel.grid.major = element_blank(),
           panel.grid.minor = element_blank())
 
-
 # get clones w/ multiple timepoints ---------------------------------------
+
 clone_summary <- pc_dat %>% 
     filter(num_timepoints %in% c(2,3)) %>% 
     select(lib_id, donor_id, timepoint, clone_id, num_timepoints)
