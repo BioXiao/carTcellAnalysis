@@ -87,17 +87,23 @@ x <- pc_dat %>%
            any_repeated = any(repeat_alpha != "other") | 
                any(repeat_beta != "other"),
            highlight = any_detected & any_repeated) %>% 
-    ungroup()
-    # TODO: add 'any_repeated'
+    ungroup() %>% 
+    spread(chain, allele)
 
 
 # create plot -------------------------------------------------------------
 
-n_fill_colors <- n_distinct(x[["repeat_alpha"]])
+# n_fill_colors <- x[["allele"]][x[["allele"]] != "null" & 
+#                                    x[["chain"]] == "trbv"] %>% 
+#     n_distinct()
+n_fill_colors <- n_distinct(x[["trbv"]])
 fill_cb_pal <- colorRampPalette(cb_pal)(n_fill_colors)
 fill_cb_pal[1] <- "#444444"
 
-n_colour_colors <- n_distinct(x[["repeat_beta"]])
+# n_colour_colors <- x[["allele"]][x[["allele"]] != "null" & 
+#                                      x[["chain"]] == "trav"] %>% 
+#     n_distinct()
+n_colour_colors <- n_distinct(x[["trav"]])
 colour_cb_pal <- colorRampPalette(cb_pal)(n_colour_colors)
 colour_cb_pal[1] <- "#444444"
 
@@ -117,8 +123,9 @@ colour_cb_pal[1] <- "#444444"
 
 x %>% 
     ggplot(aes(x = PC1, y = PC2, 
-               fill = repeat_alpha, colour = repeat_beta, 
-               alpha = highlight, size = as.factor(num_timepoints))) +
+               fill = trbv, colour = trav,
+               alpha = any_detected, size = as.factor(num_timepoints))) +
+    geom_point(stroke = 2) +
     geom_point(data = x %>% filter(detected == "none"), 
                shape = 21, stroke = 2) +
     geom_point(data = x %>% filter(detected == "alpha"), 
@@ -134,16 +141,33 @@ x %>%
     scale_colour_manual(values = colour_cb_pal) +
     scale_alpha_manual(values = c(0.1, 0.7)) +
     scale_size_manual(values = c(1, 1, 2, 4)) +
-    guides(colour = guide_legend(override.aes = list(shape = 21)),
-           fill = guide_legend(override.aes = list(shape = 21, stroke = 0, size = 4)),
+    guides(colour = FALSE, #guide_legend(override.aes = list(shape = 21)),
+           fill = FALSE, #guide_legend(override.aes = list(shape = 21, stroke = 0, size = 4)),
            size = guide_legend(override.aes = list(shape = 21)),
            alpha = guide_legend(override.aes = list(shape = 21))) +
-    scale_shape_manual(values = c(21, 24, 22, 23)) +
-    theme_bw() 
-#     + theme(panel.grid.major = element_blank(),
+    # scale_shape_manual(values = c(21, 24, 22, 23)) +
+    theme_bw() # +
+#     theme(panel.grid.major = element_blank(),
 #           panel.grid.minor = element_blank())
 
+# other plot --------------------------------------------------------------
 
+x %>% 
+    filter(repeat_alpha != "other") %>% 
+    ggplot(aes(x = repeat_alpha)) +
+    geom_bar(aes(fill = donor_id), stat = "count") + 
+    scale_fill_viridis(discrete = TRUE) + 
+    facet_wrap(~ timepoint)
+
+
+# other plot 2 ------------------------------------------------------------
+
+x %>% 
+    filter(repeat_beta != "other") %>% 
+    ggplot(aes(x = repeat_beta)) +
+    geom_bar(aes(fill = donor_id), stat = "count") + 
+    scale_fill_viridis(discrete = TRUE) + 
+    facet_wrap(~ timepoint)
 
 # get clones w/ multiple timepoints ---------------------------------------
 
