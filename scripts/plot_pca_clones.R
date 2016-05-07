@@ -69,7 +69,6 @@ get_chain_status <- Vectorize(function(trav, trbv) {
 
 # check for alleles detected at multiple timepoints
 x <- pc_dat %>% 
-    filter(donor_id == "x194") %>% 
     mutate(detected = get_chain_status(trav, trbv),
            any_detected = detected != "none") %>% 
     gather(chain, allele, trav:trbv) %>% 
@@ -84,15 +83,23 @@ x <- pc_dat %>%
            repeat_beta = ifelse(any(chain == "trbv" & num_timepoints == 3), 
                                 allele[chain == "trbv" & num_timepoints == 3], 
                                 "other"),
-           num_timepoints = max(num_timepoints)) %>% 
+           num_timepoints = max(num_timepoints),
+           any_repeated = any(repeat_alpha != "other") | 
+               any(repeat_beta != "other"),
+           highlight = any_detected & any_repeated) %>% 
     ungroup()
     # TODO: add 'any_repeated'
 
 
 # create plot -------------------------------------------------------------
 
-n_colors <- n_distinct(pc_dat[["clone_id"]])
-clone_cb_pal <- colorRampPalette(cb_pal)(n_colors)
+n_fill_colors <- n_distinct(x[["repeat_alpha"]])
+fill_cb_pal <- colorRampPalette(cb_pal)(n_fill_colors)
+fill_cb_pal[1] <- "#444444"
+
+n_colour_colors <- n_distinct(x[["repeat_beta"]])
+colour_cb_pal <- colorRampPalette(cb_pal)(n_colour_colors)
+colour_cb_pal[1] <- "#444444"
 
 # pc_dat %>% 
 #     ggplot(aes(x = PC1, y = PC2)) +
@@ -109,13 +116,29 @@ clone_cb_pal <- colorRampPalette(cb_pal)(n_colors)
 #           panel.grid.minor = element_blank())
 
 x %>% 
-    ggplot(aes(x = PC1, y = PC2)) +
-    geom_point(aes(fill = repeat_alpha, colour = repeat_beta, 
-                   alpha = any_detected), shape = 21, stroke = 2, size = 3) +
+    ggplot(aes(x = PC1, y = PC2, 
+               fill = repeat_alpha, colour = repeat_beta, 
+               alpha = highlight, size = as.factor(num_timepoints))) +
+    geom_point(data = x %>% filter(detected == "none"), 
+               shape = 21, stroke = 2) +
+    geom_point(data = x %>% filter(detected == "alpha"), 
+               shape = 24, stroke = 2) +
+    geom_point(data = x %>% filter(detected == "beta"),
+               shape = 22, stroke = 2) +
+    geom_point(data = x %>% filter(detected == "both"),
+               shape = 23, stroke = 2) +
     facet_grid(donor_id ~ timepoint) +
-    scale_fill_colorblind() +
-    scale_color_colorblind() +
-    # scale_shape_manual(values = c(21, 24, 22, 23)) +
+#     scale_fill_viridis(discrete = TRUE) +
+#     scale_color_viridis(discrete = TRUE) +
+    scale_fill_manual(values = fill_cb_pal) +
+    scale_colour_manual(values = colour_cb_pal) +
+    scale_alpha_manual(values = c(0.1, 0.7)) +
+    scale_size_manual(values = c(1, 1, 2, 4)) +
+    guides(colour = guide_legend(override.aes = list(shape = 21)),
+           fill = guide_legend(override.aes = list(shape = 21, stroke = 0, size = 4)),
+           size = guide_legend(override.aes = list(shape = 21)),
+           alpha = guide_legend(override.aes = list(shape = 21))) +
+    scale_shape_manual(values = c(21, 24, 22, 23)) +
     theme_bw() 
 #     + theme(panel.grid.major = element_blank(),
 #           panel.grid.minor = element_blank())
