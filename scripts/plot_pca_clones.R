@@ -153,11 +153,12 @@ x %>%
 # other plot --------------------------------------------------------------
 
 x %>% 
-    filter(repeat_alpha != "other") %>% 
-    ggplot(aes(x = repeat_alpha)) +
+    gather(repeated_chain, repeated_allele, repeat_alpha:repeat_beta) %>% 
+    filter(repeated_allele != "other") %>% 
+    ggplot(aes(x = repeated_allele)) +
     geom_bar(aes(fill = donor_id), stat = "count") + 
     scale_fill_viridis(discrete = TRUE) + 
-    facet_wrap(~ timepoint)
+    facet_grid(~ timepoint)
 
 
 # other plot 2 ------------------------------------------------------------
