@@ -45,16 +45,6 @@ pc_dat <- as.data.frame(pca$x) %>%
     
 # prep data for plotting --------------------------------------------------
 
-# check for clones detected at multiple timepoints
-
-# pc_dat <- pc_dat %>% 
-#     group_by(donor_id, clone_id) %>% 
-#     dplyr::mutate(num_timepoints = n_distinct(timepoint)) %>% 
-#     ungroup() %>% 
-#     mutate(jxn_detected = clone_id != "null",
-#            num_timepoints = ifelse(jxn_detected, num_timepoints, 0)) %>% 
-#     mutate(num_timepoints = factor(num_timepoints))
-
 get_chain_status <- Vectorize(function(trav, trbv) {
     if(!(trav == "null") && !(trbv == "null")) {
         return("both")
@@ -67,88 +57,91 @@ get_chain_status <- Vectorize(function(trav, trbv) {
     }
 })
 
-# check for alleles detected at multiple timepoints
+# mark samples for which either an alpha or beta junction was detected; 'melt'
+# alpha and beta junction columns into 'chain' and 'id' columns
 x <- pc_dat %>% 
-    mutate(detected = get_chain_status(trav, trbv),
+    rename(alpha = trav, beta = trbv) %>% 
+    mutate(detected = get_chain_status(alpha, beta),
            any_detected = detected != "none") %>% 
-    gather(chain, allele, trav:trbv) %>% 
-    group_by(donor_id, chain, allele) %>% 
+    gather(jxn_chain, jxn_id, alpha:beta)
+
+# count how many times (distinct timepoints) each unique alpha or beta junction 
+# appears for each donor; set `n_timepoints` for null junctions to zero
+x <- x %>% 
+    group_by(donor_id, jxn_chain, jxn_id) %>% 
     mutate(num_timepoints = n_distinct(timepoint)) %>% 
     ungroup() %>% 
-    mutate(num_timepoints = ifelse(allele != "null", num_timepoints, 0)) %>% 
+    mutate(num_timepoints = ifelse(jxn_id != "null", num_timepoints, 0)) 
+
+# for each sample, store the junction id in a new column if it appears in all
+# timepoints for a donor; because we'll just have one point per sample, keep
+# the max number of timepoints across junctions (indicating the number of 
+# time points that either a repeated alpha OR beta junction is detected for 
+# that sample)
+x <- x %>% 
     group_by(lib_id) %>% 
-    mutate(repeat_alpha = ifelse(any(chain == "trav" & num_timepoints == 3), 
-                                 allele[chain == "trav" & num_timepoints == 3], 
+    mutate(repeat_alpha = ifelse(any(jxn_chain == "alpha" & num_timepoints == 3), 
+                                 jxn_id[jxn_chain == "alpha" & 
+                                            num_timepoints == 3], 
                                  "other"), 
-           repeat_beta = ifelse(any(chain == "trbv" & num_timepoints == 3), 
-                                allele[chain == "trbv" & num_timepoints == 3], 
+           repeat_beta = ifelse(any(jxn_chain == "beta" & num_timepoints == 3), 
+                                jxn_id[jxn_chain == "beta" & 
+                                           num_timepoints == 3], 
                                 "other"),
            num_timepoints = max(num_timepoints),
            any_repeated = any(repeat_alpha != "other") | 
-               any(repeat_beta != "other"),
-           highlight = any_detected & any_repeated) %>% 
-    ungroup() %>% 
-    spread(chain, allele)
+               any(repeat_beta != "other")) %>% 
+    ungroup()
+
+# spread or 'cast' the previously melted chain/id info back into separate
+# columns, so alpha and beta junction can be used independently for plotting
+x <- x %>% 
+    spread(jxn_chain, jxn_id)
 
 
 # create plot -------------------------------------------------------------
 
-# n_fill_colors <- x[["allele"]][x[["allele"]] != "null" & 
-#                                    x[["chain"]] == "trbv"] %>% 
-#     n_distinct()
-n_fill_colors <- n_distinct(x[["trbv"]])
+# create fill palette with unique color for each beta junction (plus one 
+# extra for non-detected junctions)
+n_fill_colors <- n_distinct(x[["beta"]])
 fill_cb_pal <- colorRampPalette(cb_pal)(n_fill_colors)
-fill_cb_pal[1] <- "#444444"
+fill_cb_pal[1] <- "#CB181D"
 
-# n_colour_colors <- x[["allele"]][x[["allele"]] != "null" & 
-#                                      x[["chain"]] == "trav"] %>% 
-#     n_distinct()
-n_colour_colors <- n_distinct(x[["trav"]])
+# create color palette with unique color for each alpha junction (plus one 
+# extra for non-detected junctions)
+n_colour_colors <- n_distinct(x[["alpha"]])
 colour_cb_pal <- colorRampPalette(cb_pal)(n_colour_colors)
-colour_cb_pal[1] <- "#444444"
-
-# pc_dat %>% 
-#     ggplot(aes(x = PC1, y = PC2)) +
-#     geom_point(aes(fill = clone_id, alpha = jxn_detected, 
-#                    size = num_timepoints, shape = num_timepoints)) +
-#     facet_grid(donor_id ~ timepoint) +
-#     scale_fill_manual(values = clone_cb_pal) +
-#     scale_alpha_manual(values = c(0.2, 0.8)) +
-#     scale_shape_manual(values = c(21, 24, 22, 23)) +
-#     scale_size_manual(values = c(2, 2, 4, 6)) +
-#     guides(fill = FALSE, size = FALSE) +
-#     theme_bw() +
-#     theme(panel.grid.major = element_blank(),
-#           panel.grid.minor = element_blank())
+colour_cb_pal[1] <- "#CB181D"
 
 x %>% 
+    filter(any_repeated) %>% 
     ggplot(aes(x = PC1, y = PC2, 
-               fill = trbv, colour = trav,
+               fill = beta, colour = alpha, label = clone_id,
                alpha = any_detected, size = as.factor(num_timepoints))) +
-    geom_point(stroke = 2) +
-    geom_point(data = x %>% filter(detected == "none"), 
-               shape = 21, stroke = 2) +
-    geom_point(data = x %>% filter(detected == "alpha"), 
-               shape = 24, stroke = 2) +
-    geom_point(data = x %>% filter(detected == "beta"),
-               shape = 22, stroke = 2) +
-    geom_point(data = x %>% filter(detected == "both"),
-               shape = 23, stroke = 2) +
+    geom_point(shape = 21, stroke = 2) +
+    geom_text_repel(data = x %>% filter(any_repeated)) +
     facet_grid(donor_id ~ timepoint) +
-#     scale_fill_viridis(discrete = TRUE) +
-#     scale_color_viridis(discrete = TRUE) +
     scale_fill_manual(values = fill_cb_pal) +
     scale_colour_manual(values = colour_cb_pal) +
-    scale_alpha_manual(values = c(0.1, 0.7)) +
-    scale_size_manual(values = c(1, 1, 2, 4)) +
-    guides(colour = FALSE, #guide_legend(override.aes = list(shape = 21)),
-           fill = FALSE, #guide_legend(override.aes = list(shape = 21, stroke = 0, size = 4)),
-           size = guide_legend(override.aes = list(shape = 21)),
-           alpha = guide_legend(override.aes = list(shape = 21))) +
-    # scale_shape_manual(values = c(21, 24, 22, 23)) +
-    theme_bw() # +
+    scale_alpha_manual(values = c(0.7, 0.7)) +
+    scale_size_manual(values = c(5, 1, 2, 4)) +
+    guides(colour = guide_legend(override.aes = list(shape = 21)),
+           fill = guide_legend(override.aes = list(shape = 21, stroke = 0, size = 4)),
+           size = guide_legend(override.aes = list(shape = 21),
+                               title = "times observed"),
+           alpha = FALSE) + #guide_legend(override.aes = list(shape = 21))) +
+    theme_gray() # +
 #     theme(panel.grid.major = element_blank(),
 #           panel.grid.minor = element_blank())
+
+
+# test --------------------------------------------------------------------
+
+trbv_summary <- x %>% 
+    group_by(trbv) %>% 
+    summarise(n_repeated = max(num_timepoints))
+
+fill_cb_sub_pal <- fill_cb_pal[which(trbv_summary[["n_repeated"]] == 3)]
 
 # other plot --------------------------------------------------------------
 
@@ -156,9 +149,11 @@ x %>%
     gather(repeated_chain, repeated_allele, repeat_alpha:repeat_beta) %>% 
     filter(repeated_allele != "other") %>% 
     ggplot(aes(x = repeated_allele)) +
-    geom_bar(aes(fill = donor_id), stat = "count") + 
+    geom_bar(aes(fill = timepoint), stat = "count") + 
     scale_fill_viridis(discrete = TRUE) + 
-    facet_grid(~ timepoint)
+    # coord_flip() +
+    facet_wrap(~ donor_id, nrow = 3) +
+    coord_flip()
 
 
 # other plot 2 ------------------------------------------------------------
@@ -168,7 +163,7 @@ x %>%
     ggplot(aes(x = repeat_beta)) +
     geom_bar(aes(fill = donor_id), stat = "count") + 
     scale_fill_viridis(discrete = TRUE) + 
-    facet_wrap(~ timepoint)
+    facet_wrap(~ donor_id)
 
 # get clones w/ multiple timepoints ---------------------------------------
 
