@@ -96,7 +96,9 @@ x <- x %>%
 # spread or 'cast' the previously melted chain/id info back into separate
 # columns, so alpha and beta junction can be used independently for plotting
 x <- x %>% 
-    spread(jxn_chain, jxn_id)
+    spread(jxn_chain, jxn_id) %>% 
+    mutate(alpha = as.factor(alpha),
+           beta = as.factor(beta))
 
 
 # create plot -------------------------------------------------------------
@@ -105,31 +107,30 @@ x <- x %>%
 # extra for non-detected junctions)
 n_fill_colors <- n_distinct(x[["beta"]])
 fill_cb_pal <- colorRampPalette(cb_pal)(n_fill_colors)
-fill_cb_pal[1] <- "#CB181D"
+fill_cb_pal[1] <- "#FFFFFF"
 
 # create color palette with unique color for each alpha junction (plus one 
 # extra for non-detected junctions)
 n_colour_colors <- n_distinct(x[["alpha"]])
 colour_cb_pal <- colorRampPalette(cb_pal)(n_colour_colors)
-colour_cb_pal[1] <- "#CB181D"
+colour_cb_pal[1] <- "#FFFFFF"
 
 x %>% 
-    filter(any_repeated) %>% 
+    # filter(any_repeated) %>% 
     ggplot(aes(x = PC1, y = PC2, 
                fill = beta, colour = alpha, label = clone_id,
                alpha = any_detected, size = as.factor(num_timepoints))) +
     geom_point(shape = 21, stroke = 2) +
-    geom_text_repel(data = x %>% filter(any_repeated)) +
+    # geom_text() +
     facet_grid(donor_id ~ timepoint) +
     scale_fill_manual(values = fill_cb_pal) +
     scale_colour_manual(values = colour_cb_pal) +
-    scale_alpha_manual(values = c(0.7, 0.7)) +
-    scale_size_manual(values = c(5, 1, 2, 4)) +
-    guides(colour = guide_legend(override.aes = list(shape = 21)),
-           fill = guide_legend(override.aes = list(shape = 21, stroke = 0, size = 4)),
-           size = guide_legend(override.aes = list(shape = 21),
-                               title = "times observed"),
-           alpha = FALSE) + #guide_legend(override.aes = list(shape = 21))) +
+    scale_alpha_manual(values = c(0.1, 0.7)) +
+    scale_size_manual(values = c(1, 1, 2, 4)) +
+    guides(colour = guide_legend(override.aes = list(size = 3)),
+           fill = guide_legend(override.aes = list(stroke = 0, size = 4)),
+           size = guide_legend(title = "times observed"),
+           alpha = FALSE) +
     theme_gray() # +
 #     theme(panel.grid.major = element_blank(),
 #           panel.grid.minor = element_blank())
@@ -137,11 +138,33 @@ x %>%
 
 # test --------------------------------------------------------------------
 
-trbv_summary <- x %>% 
-    group_by(trbv) %>% 
-    summarise(n_repeated = max(num_timepoints))
+# get factor levels of repeated beta junctions
+beta_repeated <- x %>% filter(num_timepoints == 3) %>% 
+    select(beta) %>% 
+    mutate(level_idx = as.numeric(beta)) %>% 
+    distinct()
 
-fill_cb_sub_pal <- fill_cb_pal[which(trbv_summary[["n_repeated"]] == 3)]
+fill_cb_sub_pal <- fill_cb_pal[beta_repeated[["level_idx"]] %>% sort()]
+
+# get factor levels of repeated beta junctions
+alpha_repeated <- x %>% filter(num_timepoints == 3) %>% 
+    select(alpha) %>% 
+    mutate(level_idx = as.numeric(alpha)) %>% 
+    distinct()
+
+colour_cb_sub_pal <- colour_cb_pal[alpha_repeated[["level_idx"]] %>% sort()]
+
+x %>% 
+    filter(num_timepoints == 3) %>% 
+    ggplot(aes(x = 1, y = clone_id, 
+               fill = beta, colour = alpha, label = clone_id)) +
+    geom_point(shape = 21, stroke = 2, size = 4) +
+    facet_wrap(~ donor_id, nrow = 3, scales = "free") +
+    scale_fill_manual(values = fill_cb_sub_pal) +
+    scale_colour_manual(values = colour_cb_sub_pal) +
+    guides(colour = FALSE,
+           fill = FALSE) +
+    theme_gray()
 
 # other plot --------------------------------------------------------------
 
