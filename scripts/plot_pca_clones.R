@@ -107,34 +107,33 @@ x <- x %>%
 # extra for non-detected junctions)
 n_fill_colors <- n_distinct(x[["beta"]])
 fill_cb_pal <- colorRampPalette(cb_pal)(n_fill_colors)
-fill_cb_pal[1] <- "#FFFFFF"
+# fill_cb_pal[1] <- "#FFFFFF"
 
 # create color palette with unique color for each alpha junction (plus one 
 # extra for non-detected junctions)
 n_colour_colors <- n_distinct(x[["alpha"]])
 colour_cb_pal <- colorRampPalette(cb_pal)(n_colour_colors)
-colour_cb_pal[1] <- "#FFFFFF"
+# colour_cb_pal[1] <- "#FFFFFF"
 
-x %>% 
-    # filter(any_repeated) %>% 
+p1 <- x %>% 
     ggplot(aes(x = PC1, y = PC2, 
                fill = beta, colour = alpha, label = clone_id,
                alpha = any_detected, size = as.factor(num_timepoints))) +
     geom_point(shape = 21, stroke = 2) +
-    # geom_text() +
     facet_grid(donor_id ~ timepoint) +
     scale_fill_manual(values = fill_cb_pal) +
     scale_colour_manual(values = colour_cb_pal) +
-    scale_alpha_manual(values = c(0.1, 0.7)) +
+    scale_alpha_manual(values = c(0.2, 0.7)) +
     scale_size_manual(values = c(1, 1, 2, 4)) +
-    guides(colour = guide_legend(override.aes = list(size = 3)),
-           fill = guide_legend(override.aes = list(stroke = 0, size = 4)),
+    guides(colour = FALSE, # guide_legend(override.aes = list(size = 3)),
+           fill = FALSE, # guide_legend(override.aes = list(stroke = 0, size = 4)),
            size = guide_legend(title = "times observed"),
            alpha = FALSE) +
-    theme_gray() # +
-#     theme(panel.grid.major = element_blank(),
-#           panel.grid.minor = element_blank())
-
+    theme_bw() +
+    theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(), 
+          legend.position = "bottom")
+p1
 
 # test --------------------------------------------------------------------
 
@@ -154,7 +153,7 @@ alpha_repeated <- x %>% filter(num_timepoints == 3) %>%
 
 colour_cb_sub_pal <- colour_cb_pal[alpha_repeated[["level_idx"]] %>% sort()]
 
-x %>% 
+p2 <- x %>% 
     filter(num_timepoints == 3) %>% 
     ggplot(aes(x = 1, y = clone_id, 
                fill = beta, colour = alpha, label = clone_id)) +
@@ -164,29 +163,38 @@ x %>%
     scale_colour_manual(values = colour_cb_sub_pal) +
     guides(colour = FALSE,
            fill = FALSE) +
-    theme_gray()
+    theme_bw() +
+    theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(), 
+          axis.ticks.x = element_blank(),
+          axis.text.x = element_blank())
+p2
 
 # other plot --------------------------------------------------------------
 
-x %>% 
-    gather(repeated_chain, repeated_allele, repeat_alpha:repeat_beta) %>% 
-    filter(repeated_allele != "other") %>% 
-    ggplot(aes(x = repeated_allele)) +
+p3 <- x %>% 
+    gather(repeated_chain, repeated_jxn, repeat_alpha:repeat_beta) %>% 
+    filter(repeated_jxn != "other") %>% 
+    ggplot(aes(x = repeated_jxn)) +
     geom_bar(aes(fill = timepoint), stat = "count") + 
     scale_fill_viridis(discrete = TRUE) + 
-    # coord_flip() +
     facet_wrap(~ donor_id, nrow = 3) +
-    coord_flip()
+    coord_flip() +
+    theme_bw() +
+    theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(), 
+          legend.position = "bottom")
+p3
 
 
-# other plot 2 ------------------------------------------------------------
 
-x %>% 
-    filter(repeat_beta != "other") %>% 
-    ggplot(aes(x = repeat_beta)) +
-    geom_bar(aes(fill = donor_id), stat = "count") + 
-    scale_fill_viridis(discrete = TRUE) + 
-    facet_wrap(~ donor_id)
+# combo plot --------------------------------------------------------------
+
+combined_plot <- ggdraw() +
+    draw_plot(p1, 0, 0, 0.6, 1) +
+    draw_plot(p2, 0.6, 0.05, 0.2, 0.95) +
+    draw_plot(p3, 0.8, 0, 0.2, 1)
+combined_plot
 
 # get clones w/ multiple timepoints ---------------------------------------
 
