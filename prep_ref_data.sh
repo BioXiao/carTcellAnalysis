@@ -199,9 +199,12 @@ fi
 #   CAR construct sequence
 # SPACER: number of bp to trim from both ends of each part to create a visual
 #   gap when viewing in browser
+# CONTIGUOUS: whether the records in the FASTA should be combined in order on
+#	a single chromosome (True) or used to generate separate chromosomes (False)
 
 CAR_PARTS_OVERLAP_GTF="${ANNOTATION_DIR}/car_parts_overlap.gtf"
 SPACER=0
+CONTIGUOUS="False"
 
 echo "[8/9]"
 if [ ! -e "$CAR_PARTS_OVERLAP_GTF" ] || [ ${FORCE} == 1 ]; then
@@ -209,7 +212,8 @@ if [ ! -e "$CAR_PARTS_OVERLAP_GTF" ] || [ ${FORCE} == 1 ]; then
     python scripts/parts_fasta_to_gtf.py \
         $CAR_PARTS_OVERLAP_FASTA \
         $CAR_PARTS_OVERLAP_GTF \
-        $SPACER
+        $SPACER \
+		$CONTIGUOUS
 else
     echo "Construct overlap pseudo-GTF already exists; skipping."
 fi
