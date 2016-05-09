@@ -105,13 +105,17 @@ egfr_xcripts <- xcripts_gtf %>%
     filter(str_detect(transcript_id, "EGFRt_")) %>% 
     .[["transcript_id"]]
 
+# only do for P89 single cell libs
+p89_c1_bam_files <- bam_files %>% 
+    .[str_detect(., "P89\\-(5|7|9)")]
+
 egfr_cov_dat <- mclapply(as.list(egfr_xcripts), function(x) {
     egfr_gtf <- xcripts_gtf %>% 
         subset(., elementMetadata(.)[["transcript_id"]] == x)
     seqname <- seqnames(egfr_gtf) %>% 
         as.character()
     
-    xcript_cov_dat <- build_coverage_df(as.list(bam_files), egfr_gtf, 
+    xcript_cov_dat <- build_coverage_df(as.list(p89_c1_bam_files), egfr_gtf, 
                                         seqname, 10) %>% 
         mutate(egfr_xcript = x)
 }) %>% 
