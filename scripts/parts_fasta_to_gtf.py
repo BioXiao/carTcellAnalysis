@@ -23,7 +23,7 @@ def build_parts_dict(fastaRecords):
 
     return partsDict
 
-def build_fasta_list(fastaRecords, spacer=0):
+def build_fasta_list(fastaRecords, spacer=0, contiguous=True):
     totalLength = 0
     fastaList = []
     partsDict = build_parts_dict(fastaRecords)
@@ -34,6 +34,9 @@ def build_fasta_list(fastaRecords, spacer=0):
         multi = False
 
     for idx,record in enumerate(fastaRecords):
+        if not contiguous:
+            totalLength = 0
+
         recordStart = totalLength + spacer + 1
         recordStop = totalLength + len(record) - spacer
         gene_tag = re.search('(?<=gene=).*(?= )',
@@ -65,9 +68,14 @@ def main(argv):
         spacer = int(sys.argv[3])
     else:
         spacer = 0
+    if len(sys.argv) > 4:
+        contiguous = {'true': True, 'false': False}[sys.argv[4].lower()]
+    else:
+        contiguous = True
+
 
     fastaRecords = read_fasta(fastaFile)
-    fastaList = build_fasta_list(fastaRecords, spacer)
+    fastaList = build_fasta_list(fastaRecords, spacer, contiguous)
 
     write_gtf(fastaList, gtfOutFile)
 
