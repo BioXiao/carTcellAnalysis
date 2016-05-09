@@ -40,36 +40,32 @@ p89_c1_jxn_dat <- read_tsv(imgt_file) %>%
 
 # create summary data -----------------------------------------------------
 
-# summarize junction detection
+# summarize junction detection (old)
 p89_c1_jxn_summary_dat <- p89_c1_jxn_dat %>%
     group_by(lib_id) %>% 
     summarise(tra_pos = sum(str_detect(v_gene, "TRA")),
            trb_pos = sum(str_detect(v_gene, "TRB"))) %>% 
     mutate(tcr_pos = ifelse(tra_pos + trb_pos >= 2, 1, 0))
 
-# function to combine all V-gene alleles for a specified TCR chain into a 
-# single chain (or return "null" if no hits for that chain found)
-combine_alleles <- function(x, chain = c("A", "B")) {
-    allele_str <- map_chr(x, function(s) {
-        ifelse(str_detect(s, str_c("TR", chain)), 
-                          s, NA)
-    }) %>% 
-        na.omit() %>% 
-        str_c(collapse = "|")
-    if(length(allele_str)) {
-        return(allele_str)
-    } else {
-        return("null")
-    }
-}
-
 # format clonotypes
+
+# merge V-genes and junctions into a single string for each sample and chain
 p89_c1_clonotype_dat <- p89_c1_jxn_dat %>% 
-    group_by(lib_id) %>% 
-    summarise(trav = combine_alleles(v_gene, "A"),
-              trbv = combine_alleles(v_gene, "B")) %>% 
+    mutate(jxn_chain = ifelse(str_detect(v_gene, "TRA"),
+                          "alpha", "beta")) %>% 
+    group_by(lib_id, jxn_chain) %>% 
+    summarise(jxn_id = str_c(junction, collapse = "|"),
+              v_id = str_c(v_gene, collapse = "|")) %>% 
     ungroup() %>% 
-    mutate(clone_id = str_c(trav, trbv, sep = "_")) %>% 
+    complete(lib_id, jxn_chain, 
+             fill = list(jxn_id = "null", v_id = "null"))
+
+# combine alpha and beta chain ids to form clonotype ids
+p89_c1_clonotype_dat <- p89_c1_clonotype_dat %>% 
+    group_by(lib_id) %>% 
+    mutate(clone_jxn_id = str_c(jxn_id, collapse = "_"),
+           clone_v_id = str_c(v_id, collapse = "_")) %>% 
+    ungroup() %>% 
     arrange(lib_id)
 
 
